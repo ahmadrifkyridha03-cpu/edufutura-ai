@@ -13,22 +13,64 @@ import {
   RefreshCw,
   FileSpreadsheet,
   Building2,
-  UserCheck
+  UserCheck,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  Clock,
+  ArrowRightLeft
 } from "lucide-react";
-import { Pengaturan } from "../types";
+import { Pengaturan, RmeMonthItem, AgendaSekolahItem } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
 }
 
+const DEFAULT_RME_GANJIL: RmeMonthItem[] = [
+  { month: "Juli", totalWeeks: 4, nonEffective: 2, effective: 2, note: "MPLS & Pengenalan Lingkungan Belajar (2 Pekan)" },
+  { month: "Agustus", totalWeeks: 5, nonEffective: 0, effective: 5, note: "Pekan Efektif Penuh (Peringatan HUT RI)" },
+  { month: "September", totalWeeks: 4, nonEffective: 1, effective: 3, note: "Penilaian Sumatif Tengah Semester (PTS/STS) Ganjil (1 Pekan)" },
+  { month: "Oktober", totalWeeks: 5, nonEffective: 0, effective: 5, note: "Pekan Efektif Penuh" },
+  { month: "November", totalWeeks: 4, nonEffective: 0, effective: 4, note: "Pekan Efektif Penuh" },
+  { month: "Desember", totalWeeks: 4, nonEffective: 3, effective: 1, note: "Sumatif Akhir Semester (SAS), Pembagian Rapor & Libur Semester 1 (3 Pekan)" }
+];
+
+const DEFAULT_RME_GENAP: RmeMonthItem[] = [
+  { month: "Januari", totalWeeks: 4, nonEffective: 0, effective: 4, note: "Pekan Efektif Penuh" },
+  { month: "Februari", totalWeeks: 4, nonEffective: 0, effective: 4, note: "Pekan Efektif Penuh" },
+  { month: "Maret", totalWeeks: 5, nonEffective: 2, effective: 3, note: "Libur Awal Ramadhan & PTS/STS Genap (2 Pekan)" },
+  { month: "April", totalWeeks: 4, nonEffective: 2, effective: 2, note: "Libur Hari Raya Idul Fitri & Ujian Akhir Jenjang (2 Pekan)" },
+  { month: "Mei", totalWeeks: 5, nonEffective: 1, effective: 4, note: "Sumatif Akhir Tahun (SAT) Genap (1 Pekan)" },
+  { month: "Juni", totalWeeks: 4, nonEffective: 3, effective: 1, note: "Pengolahan Rapor, Wisuda & Libur Kenaikan Kelas (3 Pekan)" }
+];
+
+const DEFAULT_AGENDA_SEKOLAH: AgendaSekolahItem[] = [
+  { id: "1", kegiatan: "Masa Pengenalan Lingkungan Sekolah (MPLS)", waktu: "13 - 24 Juli 2026", semester: "Ganjil", kategori: "Kurikuler" },
+  { id: "2", kegiatan: "Peringatan HUT RI Ke-81", waktu: "17 Agustus 2026", semester: "Ganjil", kategori: "Karakter/P5" },
+  { id: "3", kegiatan: "Penilaian Sumatif Tengah Semester (STS) Ganjil", waktu: "21 - 26 September 2026", semester: "Ganjil", kategori: "Asesmen" },
+  { id: "4", kegiatan: "Asesmen Sumatif Akhir Semester (SAS) Ganjil", waktu: "30 Nov - 11 Des 2026", semester: "Ganjil", kategori: "Asesmen" },
+  { id: "5", kegiatan: "Penerimaan Rapor & Libur Semester Ganjil", waktu: "18 Des 2026 - 3 Jan 2027", semester: "Ganjil", kategori: "Libur" },
+  { id: "6", kegiatan: "Hari Pertama Masuk Semester Genap", waktu: "4 Januari 2027", semester: "Genap", kategori: "Kurikuler" },
+  { id: "7", kegiatan: "Perkiraan Libur Awal Ramadhan 1448 H", waktu: "8 - 13 Maret 2027", semester: "Genap", kategori: "Libur" },
+  { id: "8", kegiatan: "Penilaian Sumatif Tengah Semester (STS) Genap", waktu: "15 - 20 Maret 2027", semester: "Genap", kategori: "Asesmen" },
+  { id: "9", kegiatan: "Libur Hari Raya Idul Fitri 1448 H", waktu: "22 Maret - 3 April 2027", semester: "Genap", kategori: "Libur" },
+  { id: "10", kegiatan: "Sumatif Akhir Tahun (SAT) / Asesmen Kenaikan Kelas", waktu: "24 Mei - 4 Juni 2027", semester: "Genap", kategori: "Asesmen" },
+  { id: "11", kegiatan: "Penerimaan Rapor & Libur Kenaikan Kelas", waktu: "18 Juni - 10 Juli 2027", semester: "Genap", kategori: "Libur" }
+];
+
+const DEFAULT_CATATAN_KALENDER = "Kalender Pendidikan berpedoman pada Keputusan Kepala Dinas Pendidikan Provinsi/Kab/Kota & Kebijakan Kurikulum Sekolah. Kegiatan Proyek Penguatan Profil Pelajar (P5) dilaksanakan secara blok/terpadu pada pekan terjadwal.";
+
 export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIViewProps> = ({ config }) => {
-  const [activeDoc, setActiveDoc] = useState<"analisis_cp" | "tp" | "atp" | "prota" | "prosem" | "kktp">("analisis_cp");
+  const [activeDoc, setActiveDoc] = useState<"rme" | "analisis_cp" | "tp" | "atp" | "prota" | "prosem" | "kktp">("rme");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState("");
 
   // Store generated HTML for each document type
   const [generatedDocs, setGeneratedDocs] = useState<Record<string, string>>({
+    rme: "",
     analisis_cp: "",
     tp: "",
     atp: "",
@@ -38,33 +80,131 @@ export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIView
   });
 
   const [formData, setFormData] = useState({
-    school: config.Nama_Sekolah || "SMA Negeri 5 Sungai Penuh",
-    subject: "Bahasa Indonesia",
-    singkatanMapel: "BI",
-    level: "Fase E / Kelas X",
+    school: config.Nama_Sekolah || "SMP Islam Athirah Baruga Antang",
+    subject: "Matematika",
+    singkatanMapel: "MTK",
+    level: "Fase D / Kelas VIII",
     year: "2026/2027",
-    totalJp: "108 JP / Tahun",
+    totalJp: "114 JP / Tahun",
     jpPerMinggu: "3 JP/Minggu",
-    teacher: config.Nama_Guru || "Rini Marlina, S.Pd., Gr.",
-    nipTeacher: config.NIP_Guru || "19920518 201903 2 001",
-    cityDate: `${config.Tempat_Tanda_Tangan || "Sungai Penuh"}, 14 Juli 2026`,
-    principal: config.Nama_Kepsek || "Drs. Hendra Gunawan, M.Pd.",
-    nipPrincipal: config.NIP_Kepsek || "19680423 199512 1 003",
-    cpRasional: "Pada akhir Fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja. Peserta didik mampu memahami, mengolah, menginterpretasi, dan mengevaluasi berbagai tipe teks tentang topik yang beragam.",
-    cpElemen: `Elemen 1 — Menyimak:
-Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan, pikiran, perasaan, pandangan, arahan atau pesan yang akurat dari menyimak berbagai tipe teks (nonfiksi dan fiksi) dalam bentuk monolog, dialog, dan gelar wicara.
+    teacher: config.Nama_Guru || "Ahmad Rifky Ridha, M.Pd.",
+    nipTeacher: config.NIP_Guru || "-",
+    cityDate: `${config.Tempat_Tanda_Tangan || "Makassar"}, 14 Juli 2026`,
+    principal: config.Nama_Kepsek || "Dr. Suriana, S.Pd., M.Pd.",
+    nipPrincipal: config.NIP_Kepsek || "-",
+    cpRasional: "Pada akhir Fase D, peserta didik mampu memahami, menyelesaikan masalah, dan bernalar menggunakan pola, relasi, bentuk aljabar, geometri, serta analisis data dan peluang dalam kehidupan sehari-hari.",
+    cpElemen: `Elemen 1 — Bilangan:
+Peserta didik mampu membaca, menulis, membandingkan bilangan bulat, rasional, dan irasional, serta menggunakannya dalam menyelesaikan masalah kontekstual.
 
-Elemen 2 — Membaca dan Memirsa:
-Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari teks deskripsi, laporan, narasi, rekon, eksplanasi, eksposisi dan diskusi dari teks visual dan audiovisual untuk menemukan makna yang tersurat dan tersirat.
+Elemen 2 — Aljabar:
+Peserta didik mampu menyatakan situasi ke dalam bentuk aljabar, menggunakan sifat-sifat operasi untuk menghasilkan bentuk aljabar yang ekuivalen, serta menyelesaikan sistem persamaan linier.
 
-Elemen 3 — Berbicara dan Mempresentasikan:
-Peserta didik mampu mengolah dan menyajikan gagasan, pikiran, pandangan, arahan atau pesan untuk tujuan pengajuan usul, perumusan masalah, dan solusi dalam bentuk monolog, dialog, dan gelar wicara secara logis, runtut, kritis, dan kreatif.
+Elemen 3 — Pengukuran & Geometri:
+Peserta didik mampu menghitung luas lingkaran, volume bangun ruang sisi datar, menggunakan teorema Pythagoras, dan transformasi geometri.
 
-Elemen 4 — Menulis:
-Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks informasional dan/atau fiksi. Peserta didik mampu menulis teks eksposisi, laporan, dan teks prosedur.`
+Elemen 4 — Analisis Data dan Peluang:
+Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`
   });
 
+  // State untuk Rencana Minggu Efektif (RME / RPE) & Kalender Pendidikan
+  const [rmeGanjil, setRmeGanjil] = useState<RmeMonthItem[]>(DEFAULT_RME_GANJIL);
+  const [rmeGenap, setRmeGenap] = useState<RmeMonthItem[]>(DEFAULT_RME_GENAP);
+  const [agendaSekolah, setAgendaSekolah] = useState<AgendaSekolahItem[]>(DEFAULT_AGENDA_SEKOLAH);
+  const [catatanKalender, setCatatanKalender] = useState<string>(DEFAULT_CATATAN_KALENDER);
+  const [isRmeExpanded, setIsRmeExpanded] = useState<boolean>(true);
+  const [activeRmeTab, setActiveRmeTab] = useState<"ganjil" | "genap" | "agenda">("ganjil");
+
+  // Kalkulasi Otomatis Total Pekan & Distribusi Jam Pelajaran (JP)
+  const parsedJpPerMinggu = parseInt(formData.jpPerMinggu) || 3;
+
+  const totGanjilTotal = rmeGanjil.reduce((acc, m) => acc + (Number(m.totalWeeks) || 0), 0);
+  const totGanjilNon = rmeGanjil.reduce((acc, m) => acc + (Number(m.nonEffective) || 0), 0);
+  const totGanjilEff = rmeGanjil.reduce((acc, m) => acc + (Number(m.effective) || 0), 0);
+  const jpGanjil = totGanjilEff * parsedJpPerMinggu;
+
+  const totGenapTotal = rmeGenap.reduce((acc, m) => acc + (Number(m.totalWeeks) || 0), 0);
+  const totGenapNon = rmeGenap.reduce((acc, m) => acc + (Number(m.nonEffective) || 0), 0);
+  const totGenapEff = rmeGenap.reduce((acc, m) => acc + (Number(m.effective) || 0), 0);
+  const jpGenap = totGenapEff * parsedJpPerMinggu;
+
+  const totTahunanTotal = totGanjilTotal + totGenapTotal;
+  const totTahunanNon = totGanjilNon + totGenapNon;
+  const totTahunanEff = totGanjilEff + totGenapEff;
+  const totalJpCalculated = totTahunanEff * parsedJpPerMinggu;
+  const jpIntrakurikuler = Math.round(totalJpCalculated * 0.75);
+  const jpP5 = totalJpCalculated - jpIntrakurikuler;
+
+  const handleRmeGanjilChange = (index: number, field: keyof RmeMonthItem, value: any) => {
+    setRmeGanjil((prev) => {
+      const updated = [...prev];
+      const item = { ...updated[index], [field]: value };
+      if (field === "totalWeeks" || field === "nonEffective") {
+        const total = field === "totalWeeks" ? Number(value) : Number(item.totalWeeks);
+        const non = field === "nonEffective" ? Number(value) : Number(item.nonEffective);
+        item.effective = Math.max(0, total - non);
+      }
+      updated[index] = item;
+      return updated;
+    });
+  };
+
+  const handleRmeGenapChange = (index: number, field: keyof RmeMonthItem, value: any) => {
+    setRmeGenap((prev) => {
+      const updated = [...prev];
+      const item = { ...updated[index], [field]: value };
+      if (field === "totalWeeks" || field === "nonEffective") {
+        const total = field === "totalWeeks" ? Number(value) : Number(item.totalWeeks);
+        const non = field === "nonEffective" ? Number(value) : Number(item.nonEffective);
+        item.effective = Math.max(0, total - non);
+      }
+      updated[index] = item;
+      return updated;
+    });
+  };
+
+  const handleSyncJpToForm = () => {
+    const newTotalJpText = `${totalJpCalculated} JP / Tahun (${jpGanjil} JP Sem 1, ${jpGenap} JP Sem 2)`;
+    setFormData((prev) => ({
+      ...prev,
+      totalJp: newTotalJpText
+    }));
+    notifySimpanSuccess(`Alokasi waktu total form berhasil disinkronkan menjadi ${totalJpCalculated} JP / Tahun!`);
+  };
+
+  const handleResetRme = () => {
+    setRmeGanjil(DEFAULT_RME_GANJIL);
+    setRmeGenap(DEFAULT_RME_GENAP);
+    setAgendaSekolah(DEFAULT_AGENDA_SEKOLAH);
+    setCatatanKalender(DEFAULT_CATATAN_KALENDER);
+    notifySimpanSuccess("Data Rencana Minggu Efektif & Kalender Sekolah dikembalikan ke standar!");
+  };
+
+  const handleAddAgenda = () => {
+    const newId = String(Date.now());
+    setAgendaSekolah((prev) => [
+      ...prev,
+      {
+        id: newId,
+        kegiatan: "Kegiatan / Agenda Sekolah Baru",
+        waktu: "Pekan Ke-..., Bulan ...",
+        semester: "Ganjil",
+        kategori: "Kurikuler"
+      }
+    ]);
+  };
+
+  const handleDeleteAgenda = (id: string) => {
+    setAgendaSekolah((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleAgendaChange = (id: string, field: keyof AgendaSekolahItem, value: any) => {
+    setAgendaSekolah((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, [field]: value } : a))
+    );
+  };
+
   const docTypeList = [
+    { id: "rme", label: "0. RME & Kalender", fullTitle: "Rencana Minggu Efektif (RME / RPE) & Kalender Pendidikan", icon: CalendarDays },
     { id: "analisis_cp", label: "1. Analisis CP", fullTitle: "Analisis Capaian Pembelajaran (CP)", icon: BookOpen },
     { id: "tp", label: "2. Tujuan Pembelajaran (TP)", fullTitle: "Tujuan Pembelajaran (TP)", icon: FileCheck },
     { id: "atp", label: "3. Alur TP (ATP)", fullTitle: "Alur Tujuan Pembelajaran (ATP)", icon: Layers },
@@ -75,32 +215,36 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
 
   const handleFillSample = () => {
     setFormData({
-      school: config.Nama_Sekolah || "SMA Negeri 5 Sungai Penuh",
-      subject: "Bahasa Indonesia",
-      singkatanMapel: "BI",
-      level: "Fase E / Kelas X",
+      school: config.Nama_Sekolah || "SMP Islam Athirah Baruga Antang",
+      subject: "Matematika",
+      singkatanMapel: "MTK",
+      level: "Fase D / Kelas VIII",
       year: "2026/2027",
-      totalJp: "108 JP / Tahun",
+      totalJp: "114 JP / Tahun",
       jpPerMinggu: "3 JP/Minggu",
-      teacher: config.Nama_Guru || "Rini Marlina, S.Pd., Gr.",
-      nipTeacher: config.NIP_Guru || "19920518 201903 2 001",
-      cityDate: `${config.Tempat_Tanda_Tangan || "Sungai Penuh"}, 14 Juli 2026`,
-      principal: config.Nama_Kepsek || "Drs. Hendra Gunawan, M.Pd.",
-      nipPrincipal: config.NIP_Kepsek || "19680423 199512 1 003",
-      cpRasional: "Pada akhir Fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja. Peserta didik mampu memahami, mengolah, menginterpretasi, dan mengevaluasi berbagai tipe teks tentang topik yang beragam.",
-      cpElemen: `Elemen 1 — Menyimak:
-Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan, pikiran, perasaan, pandangan, arahan atau pesan yang akurat dari menyimak berbagai tipe teks (nonfiksi dan fiksi) dalam bentuk monolog, dialog, dan gelar wicara.
+      teacher: config.Nama_Guru || "Ahmad Rifky Ridha, M.Pd.",
+      nipTeacher: config.NIP_Guru || "-",
+      cityDate: `${config.Tempat_Tanda_Tangan || "Makassar"}, 14 Juli 2026`,
+      principal: config.Nama_Kepsek || "Dr. Suriana, S.Pd., M.Pd.",
+      nipPrincipal: config.NIP_Kepsek || "-",
+      cpRasional: "Pada akhir Fase D, peserta didik mampu memahami, menyelesaikan masalah, dan bernalar menggunakan pola, relasi, bentuk aljabar, geometri, serta analisis data dan peluang dalam kehidupan sehari-hari.",
+      cpElemen: `Elemen 1 — Bilangan:
+Peserta didik mampu membaca, menulis, membandingkan bilangan bulat, rasional, dan irasional, serta menggunakannya dalam menyelesaikan masalah kontekstual.
 
-Elemen 2 — Membaca dan Memirsa:
-Peserta didik mampu mengevaluasi informasi berupa gagasan, pikiran, pandangan, arahan atau pesan dari teks deskripsi, laporan, narasi, rekon, eksplanasi, eksposisi dan diskusi dari teks visual dan audiovisual untuk menemukan makna yang tersurat dan tersirat.
+Elemen 2 — Aljabar:
+Peserta didik mampu menyatakan situasi ke dalam bentuk aljabar, menggunakan sifat-sifat operasi untuk menghasilkan bentuk aljabar yang ekuivalen, serta menyelesaikan sistem persamaan linier.
 
-Elemen 3 — Berbicara dan Mempresentasikan:
-Peserta didik mampu mengolah dan menyajikan gagasan, pikiran, pandangan, arahan atau pesan untuk tujuan pengajuan usul, perumusan masalah, dan solusi dalam bentuk monolog, dialog, dan gelar wicara secara logis, runtut, kritis, dan kreatif.
+Elemen 3 — Pengukuran & Geometri:
+Peserta didik mampu menghitung luas lingkaran, volume bangun ruang sisi datar, menggunakan teorema Pythagoras, dan transformasi geometri.
 
-Elemen 4 — Menulis:
-Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertulis untuk berbagai tujuan secara logis, kritis, dan kreatif dalam bentuk teks informasional dan/atau fiksi.`
+Elemen 4 — Analisis Data dan Peluang:
+Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`
     });
-    notifySimpanSuccess("Contoh data Bahasa Indonesia Kelas X berhasil dimuat!");
+    setRmeGanjil(DEFAULT_RME_GANJIL);
+    setRmeGenap(DEFAULT_RME_GENAP);
+    setAgendaSekolah(DEFAULT_AGENDA_SEKOLAH);
+    setCatatanKalender(DEFAULT_CATATAN_KALENDER);
+    notifySimpanSuccess("Contoh data Matematika Kelas VIII & RME Kalender Sekolah berhasil dimuat!");
   };
 
   // Helper to sanitize HTML output and ensure school logo in top-left header
@@ -120,6 +264,272 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
     return clean;
   };
 
+  const buildInstantRmeHtml = () => {
+    let totG1Weeks = 0, totG1Non = 0, totG1Eff = 0;
+    let totG2Weeks = 0, totG2Non = 0, totG2Eff = 0;
+
+    const rowsGanjil = rmeGanjil.map((r, idx) => {
+      totG1Weeks += Number(r.totalWeeks || 0);
+      totG1Non += Number(r.nonEffective || 0);
+      totG1Eff += Number(r.effective || 0);
+      return `<tr>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${idx + 1}</td>
+        <td style="border:1px solid #333; padding:6px 8px;"><strong>${r.month}</strong></td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${r.totalWeeks}</td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${r.nonEffective}</td>
+        <td style="text-align:center; font-weight:bold; color:#1a3a5c; border:1px solid #333; padding:6px 8px;">${r.effective}</td>
+        <td style="border:1px solid #333; padding:6px 8px;">${r.note || '-'}</td>
+      </tr>`;
+    }).join("");
+
+    const rowsGenap = rmeGenap.map((r, idx) => {
+      totG2Weeks += Number(r.totalWeeks || 0);
+      totG2Non += Number(r.nonEffective || 0);
+      totG2Eff += Number(r.effective || 0);
+      return `<tr>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${idx + 1}</td>
+        <td style="border:1px solid #333; padding:6px 8px;"><strong>${r.month}</strong></td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${r.totalWeeks}</td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${r.nonEffective}</td>
+        <td style="text-align:center; font-weight:bold; color:#1a3a5c; border:1px solid #333; padding:6px 8px;">${r.effective}</td>
+        <td style="border:1px solid #333; padding:6px 8px;">${r.note || '-'}</td>
+      </tr>`;
+    }).join("");
+
+    const totEffYear = totG1Eff + totG2Eff;
+    const totJpYear = totEffYear * parsedJpPerMinggu;
+    const jpIntra = Math.round(totJpYear * 0.75);
+    const jpP5Local = totJpYear - jpIntra;
+
+    const rowsAgenda = agendaSekolah.map((a, idx) => `
+      <tr>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${idx + 1}</td>
+        <td style="border:1px solid #333; padding:6px 8px;"><strong>${a.kegiatan}</strong></td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${a.waktu}</td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;">${a.semester || 'Ganjil'}</td>
+        <td style="text-align:center; border:1px solid #333; padding:6px 8px;"><span style="padding:2px 8px; border-radius:4px; font-size:9pt; background-color:#e0f2fe; color:#0369a1;">${a.kategori || 'Kurikuler'}</span></td>
+      </tr>
+    `).join("");
+
+    const logoHtml = config.Logo_Kiri || config.Logo_Kanan 
+      ? `<img src="${config.Logo_Kiri || config.Logo_Kanan}" alt="Logo" class="logo-sekolah" style="max-height:70px; width:auto; float:left; margin-right:15px; object-fit:contain;" />`
+      : "";
+
+    return `
+      <div style="font-family: Arial, Helvetica, sans-serif; color: #1e293b; line-height: 1.5; font-size: 11pt;">
+        <div style="text-align:center; border-bottom:3px double #0f172a; padding-bottom:12px; margin-bottom:20px; overflow:hidden;">
+          ${logoHtml}
+          <div style="display:inline-block; vertical-align:middle;">
+            <h3 style="margin:0; font-size:12pt; font-weight:bold; text-transform:uppercase; color:#334155;">${config.Pemerintah || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}</h3>
+            <h2 style="margin:4px 0; font-size:14pt; font-weight:bold; text-transform:uppercase; color:#1a3a5c;">${formData.school}</h2>
+            <p style="margin:2px 0 0; font-size:9.5pt; color:#475569;">${config.Alamat_Sekolah || 'Jl. Raya Pendidikan No. 01'}</p>
+          </div>
+        </div>
+
+        <div style="text-align:center; font-size:14pt; font-weight:bold; color:#1a3a5c; margin-bottom:4px; text-transform:uppercase;">
+          RENCANA MINGGU EFEKTIF (RME / RPE) & KALENDER PENDIDIKAN
+        </div>
+        <div style="text-align:center; font-size:10pt; color:#64748b; margin-bottom:20px;">
+          Analisis Pekan Efektif & Distribusi Jam Pelajaran (JP) | Tahun Pelajaran ${formData.year}
+        </div>
+
+        <div style="font-size:11.5pt; font-weight:bold; color:#1a3a5c; border-bottom:1.5px solid #1a3a5c; padding-bottom:4px; margin-top:20px; margin-bottom:10px;">
+          A. IDENTITAS PROGRAM & SATUAN PENDIDIKAN
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:16px; font-size:10.5pt;">
+          <tr>
+            <td style="width:25%; font-weight:bold; background-color:#f1f5f9; border:1px solid #333; padding:6px 8px;">Satuan Pendidikan</td>
+            <td style="border:1px solid #333; padding:6px 8px;">${formData.school}</td>
+            <td style="width:25%; font-weight:bold; background-color:#f1f5f9; border:1px solid #333; padding:6px 8px;">Mata Pelajaran</td>
+            <td style="border:1px solid #333; padding:6px 8px;">${formData.subject} (${formData.singkatanMapel})</td>
+          </tr>
+          <tr>
+            <td style="font-weight:bold; background-color:#f1f5f9; border:1px solid #333; padding:6px 8px;">Fase / Kelas</td>
+            <td style="border:1px solid #333; padding:6px 8px;">${formData.level}</td>
+            <td style="font-weight:bold; background-color:#f1f5f9; border:1px solid #333; padding:6px 8px;">Tahun Pelajaran</td>
+            <td style="border:1px solid #333; padding:6px 8px;">${formData.year}</td>
+          </tr>
+          <tr>
+            <td style="font-weight:bold; background-color:#f1f5f9; border:1px solid #333; padding:6px 8px;">Beban Tatap Muka</td>
+            <td style="border:1px solid #333; padding:6px 8px;">${formData.jpPerMinggu}</td>
+            <td style="font-weight:bold; background-color:#f1f5f9; border:1px solid #333; padding:6px 8px;">Guru Pengampu</td>
+            <td style="border:1px solid #333; padding:6px 8px;">${formData.teacher}</td>
+          </tr>
+        </table>
+
+        <div style="font-size:11.5pt; font-weight:bold; color:#1a3a5c; border-bottom:1.5px solid #1a3a5c; padding-bottom:4px; margin-top:20px; margin-bottom:10px;">
+          B. ANALISIS MINGGU EFEKTIF SEMESTER GANJIL
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:16px; font-size:10pt;">
+          <thead>
+            <tr style="background-color:#1a3a5c; color:#ffffff;">
+              <th style="width:6%; border:1px solid #333; padding:8px; text-align:center;">No</th>
+              <th style="width:18%; border:1px solid #333; padding:8px;">Nama Bulan</th>
+              <th style="width:14%; border:1px solid #333; padding:8px; text-align:center;">Jumlah Minggu</th>
+              <th style="width:16%; border:1px solid #333; padding:8px; text-align:center;">Minggu Tdk Efektif</th>
+              <th style="width:14%; border:1px solid #333; padding:8px; text-align:center;">Minggu Efektif</th>
+              <th style="border:1px solid #333; padding:8px;">Keterangan / Agenda Kegiatan Sekolah</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsGanjil}
+            <tr style="background-color:#f1f5f9; font-weight:bold;">
+              <td colspan="2" style="border:1px solid #333; padding:6px 8px; text-align:center;">Jumlah Semester Ganjil</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">${totG1Weeks}</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">${totG1Non}</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; color:#1a3a5c;">${totG1Eff}</td>
+              <td style="border:1px solid #333; padding:6px 8px;">Pekan Efektif Ganjil = ${totG1Eff * parsedJpPerMinggu} Jam Pelajaran (JP)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:11.5pt; font-weight:bold; color:#1a3a5c; border-bottom:1.5px solid #1a3a5c; padding-bottom:4px; margin-top:20px; margin-bottom:10px;">
+          C. ANALISIS MINGGU EFEKTIF SEMESTER GENAP
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:16px; font-size:10pt;">
+          <thead>
+            <tr style="background-color:#1a3a5c; color:#ffffff;">
+              <th style="width:6%; border:1px solid #333; padding:8px; text-align:center;">No</th>
+              <th style="width:18%; border:1px solid #333; padding:8px;">Nama Bulan</th>
+              <th style="width:14%; border:1px solid #333; padding:8px; text-align:center;">Jumlah Minggu</th>
+              <th style="width:16%; border:1px solid #333; padding:8px; text-align:center;">Minggu Tdk Efektif</th>
+              <th style="width:14%; border:1px solid #333; padding:8px; text-align:center;">Minggu Efektif</th>
+              <th style="border:1px solid #333; padding:8px;">Keterangan / Agenda Kegiatan Sekolah</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsGenap}
+            <tr style="background-color:#f1f5f9; font-weight:bold;">
+              <td colspan="2" style="border:1px solid #333; padding:6px 8px; text-align:center;">Jumlah Semester Genap</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">${totG2Weeks}</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">${totG2Non}</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; color:#1a3a5c;">${totG2Eff}</td>
+              <td style="border:1px solid #333; padding:6px 8px;">Pekan Efektif Genap = ${totG2Eff * parsedJpPerMinggu} Jam Pelajaran (JP)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:11.5pt; font-weight:bold; color:#1a3a5c; border-bottom:1.5px solid #1a3a5c; padding-bottom:4px; margin-top:20px; margin-bottom:10px;">
+          D. REKAPITULASI RENCANA PEKAN EFEKTIF (RPE) & DISTRIBUSI JAM PELAJARAN
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:16px; font-size:10.5pt;">
+          <thead>
+            <tr style="background-color:#1a3a5c; color:#ffffff;">
+              <th style="width:8%; border:1px solid #333; padding:8px; text-align:center;">No</th>
+              <th style="border:1px solid #333; padding:8px;">Komponen Distribusi Jam Pembelajaran</th>
+              <th style="width:22%; border:1px solid #333; padding:8px; text-align:center;">Jumlah Pekan</th>
+              <th style="width:25%; border:1px solid #333; padding:8px; text-align:center;">Alokasi Jam Pelajaran (JP)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">1</td>
+              <td style="border:1px solid #333; padding:6px 8px;">Jumlah Pekan Efektif Semester Ganjil</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; font-weight:bold;">${totG1Eff} Pekan</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; font-weight:bold;">${totG1Eff * parsedJpPerMinggu} JP</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">2</td>
+              <td style="border:1px solid #333; padding:6px 8px;">Jumlah Pekan Efektif Semester Genap</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; font-weight:bold;">${totG2Eff} Pekan</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; font-weight:bold;">${totG2Eff * parsedJpPerMinggu} JP</td>
+            </tr>
+            <tr style="background-color:#f8fafc; font-weight:bold;">
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">3</td>
+              <td style="border:1px solid #333; padding:6px 8px;"><strong>Total Pekan Efektif 1 Tahun Ajaran</strong></td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; color:#1a3a5c;">${totEffYear} Pekan</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; color:#1a3a5c;">${totJpYear} JP</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">4</td>
+              <td style="border:1px solid #333; padding:6px 8px;">Alokasi Tatap Muka Intrakurikuler (75%)</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">${Math.round(totEffYear * 0.75)} Pekan</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; font-weight:bold; color:#166534;">${jpIntra} JP</td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">5</td>
+              <td style="border:1px solid #333; padding:6px 8px;">Alokasi Projek Penguatan Profil Pelajar (P5) / Karakter (25%)</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center;">${totEffYear - Math.round(totEffYear * 0.75)} Pekan</td>
+              <td style="border:1px solid #333; padding:6px 8px; text-align:center; font-weight:bold; color:#9a3412;">${jpP5Local} JP</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="font-size:11.5pt; font-weight:bold; color:#1a3a5c; border-bottom:1.5px solid #1a3a5c; padding-bottom:4px; margin-top:20px; margin-bottom:10px;">
+          E. KALENDER PENDIDIKAN & AGENDA UTAMA SEKOLAH
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:16px; font-size:10pt;">
+          <thead>
+            <tr style="background-color:#1a3a5c; color:#ffffff;">
+              <th style="width:6%; border:1px solid #333; padding:8px; text-align:center;">No</th>
+              <th style="border:1px solid #333; padding:8px;">Nama Agenda / Kegiatan Sekolah</th>
+              <th style="width:25%; border:1px solid #333; padding:8px; text-align:center;">Rentang Waktu / Tanggal</th>
+              <th style="width:12%; border:1px solid #333; padding:8px; text-align:center;">Semester</th>
+              <th style="width:16%; border:1px solid #333; padding:8px; text-align:center;">Kategori</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsAgenda}
+          </tbody>
+        </table>
+
+        <div style="background-color:#f8fafc; border-left:4px solid #1a3a5c; padding:10px 14px; margin-bottom:20px; font-size:10pt;">
+          <strong>Catatan Pedoman Kalender Pendidikan:</strong><br>
+          ${catatanKalender || 'Kalender Pendidikan berpedoman pada Keputusan Dinas Pendidikan dan Kalender Akademik Resmi Sekolah.'}
+        </div>
+
+        <table style="width:100%; border:none; margin-top:30px; font-size:10pt;">
+          <tr>
+            <td style="border:none; text-align:center; width:50%; vertical-align:top;">
+              Mengetahui,<br>
+              <strong>Kepala Satuan Pendidikan</strong><br><br><br><br><br>
+              <strong><u>${formData.principal}</u></strong><br>
+              NIP. ${formData.nipPrincipal}
+            </td>
+            <td style="border:none; text-align:center; width:50%; vertical-align:top;">
+              ${formData.cityDate}<br>
+              <strong>Guru Mata Pelajaran</strong><br><br><br><br><br>
+              <strong><u>${formData.teacher}</u></strong><br>
+              NIP. ${formData.nipTeacher}
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+  };
+
+  // Auto-generate clean initial RME preview on mount
+  React.useEffect(() => {
+    if (!generatedDocs.rme) {
+      setGeneratedDocs((prev) => ({
+        ...prev,
+        rme: buildInstantRmeHtml()
+      }));
+    }
+  }, []);
+
+  const getPayloadFormData = () => {
+    return {
+      ...formData,
+      rme: {
+        ganjil: rmeGanjil,
+        genap: rmeGenap,
+        agenda: agendaSekolah,
+        catatanKalender,
+        summary: {
+          pekanGanjil: totGanjilEff,
+          pekanGenap: totGenapEff,
+          totalPekan: totTahunanEff,
+          jpGanjil,
+          jpGenap,
+          totalJp: totalJpCalculated,
+          jpIntrakurikuler,
+          jpP5
+        }
+      }
+    };
+  };
+
   const handleGenerateDoc = async (targetType: string) => {
     setIsGenerating(true);
     const docMeta = docTypeList.find((d) => d.id === targetType);
@@ -131,7 +541,7 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           docType: targetType,
-          formData
+          formData: getPayloadFormData()
         })
       });
 
@@ -156,7 +566,7 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
 
   const handleGenerateAllDocs = async () => {
     setIsGenerating(true);
-    const types = ["analisis_cp", "tp", "atp", "prota", "prosem", "kktp"];
+    const types = ["rme", "analisis_cp", "tp", "atp", "prota", "prosem", "kktp"];
 
     for (let i = 0; i < types.length; i++) {
       const t = types[i];
@@ -169,7 +579,7 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             docType: t,
-            formData
+            formData: getPayloadFormData()
           })
         });
 
@@ -187,7 +597,7 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
     }
 
     setIsGenerating(false);
-    notifySimpanSuccess("Seluruh 6 Dokumen Administrasi Perangkat Ajar AI Berhasil Dibuat!");
+    notifySimpanSuccess("Seluruh 7 Dokumen Administrasi Perangkat Ajar AI Berhasil Dibuat!");
   };
 
   // Print A4 Function
@@ -582,6 +992,411 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
         </div>
       </div>
 
+      {/* Rencana Minggu Efektif (RME / RPE) & Kalender Pendidikan Card */}
+      <div className="glass-card rounded-2xl p-6 border border-slate-200 dark:border-white/10 shadow-lg space-y-6">
+        {/* Header with Title, Badges, and Controls */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200 dark:border-white/10 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+              <CalendarDays className="w-5 h-5 text-emerald-500" />
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-white font-display">
+                Rencana Minggu Efektif (RME / RPE) &amp; Kalender Pendidikan
+              </h3>
+              <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                REFERENSI WAJIB PROTA &amp; PROSEM
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Kalender pendidikan sekolah, rincian pekan efektif/tidak efektif per bulan, dan kalkulator distribusi JP tahunan.
+            </p>
+          </div>
+
+          <div className="flex items-center flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleSyncJpToForm}
+              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1.5 rounded-xl text-xs font-bold font-mono flex items-center space-x-1.5 cursor-pointer transition-all shadow-sm hover:shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+              title="Terapkan hasil perhitungan JP RME ke kolom Alokasi Waktu Total di form di atas"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+              <span>Terapkan ke Form ({totalJpCalculated} JP)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const html = buildInstantRmeHtml();
+                setGeneratedDocs((prev) => ({ ...prev, rme: html }));
+                setActiveDoc("rme");
+                notifySimpanSuccess("Pratinjau Dokumen RME & Kalender Pendidikan diperbarui!");
+              }}
+              className="bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 px-3 py-1.5 rounded-xl text-xs font-bold font-mono flex items-center space-x-1.5 cursor-pointer transition-all shadow-sm"
+              title="Lihat Pratinjau Dokumen A4 RME & Kalender Pendidikan"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Pratinjau Dokumen</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleResetRme}
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 px-3 py-1.5 rounded-xl text-xs font-bold font-mono flex items-center space-x-1.5 cursor-pointer transition-all"
+              title="Kembalikan ke standar kalender pendidikan nasional"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reset Standar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsRmeExpanded(!isRmeExpanded)}
+              className="bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 p-1.5 rounded-xl border border-slate-200 dark:border-white/10 cursor-pointer"
+              title={isRmeExpanded ? "Ciutkan Bagian RME" : "Buka Bagian RME"}
+            >
+              {isRmeExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* HUD Metric Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-white/10">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">Pekan Efektif Ganjil</span>
+            <div className="text-base font-extrabold text-cyan-600 dark:text-cyan-400 font-mono">
+              {totGanjilEff} Pekan <span className="text-xs font-normal text-slate-500">({jpGanjil} JP)</span>
+            </div>
+            <span className="text-[10px] text-slate-400">Total {totGanjilTotal} Pekan (Non: {totGanjilNon})</span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-white/10">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">Pekan Efektif Genap</span>
+            <div className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 font-mono">
+              {totGenapEff} Pekan <span className="text-xs font-normal text-slate-500">({jpGenap} JP)</span>
+            </div>
+            <span className="text-[10px] text-slate-400">Total {totGenapTotal} Pekan (Non: {totGenapNon})</span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-white/10">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">Total Efektif Tahunan</span>
+            <div className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+              {totTahunanEff} Pekan <span className="text-xs font-normal text-slate-500">({totalJpCalculated} JP)</span>
+            </div>
+            <span className="text-[10px] text-slate-400">Dasar Pengali: {parsedJpPerMinggu} JP/Minggu</span>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-white/10">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">Distribusi Kurikulum</span>
+            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 space-y-0.5 font-mono">
+              <div className="text-emerald-600 dark:text-emerald-400">Tatap Muka (75%): {jpIntrakurikuler} JP</div>
+              <div className="text-amber-600 dark:text-amber-400">Projek P5 (25%): {jpP5} JP</div>
+            </div>
+          </div>
+        </div>
+
+        {isRmeExpanded && (
+          <div className="space-y-4 pt-1">
+            {/* Sub-tab navigation */}
+            <div className="flex border-b border-slate-200 dark:border-white/10 gap-2 overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setActiveRmeTab("ganjil")}
+                className={`px-4 py-2 text-xs font-bold font-mono transition-all border-b-2 cursor-pointer flex items-center space-x-2 shrink-0 ${
+                  activeRmeTab === "ganjil"
+                    ? "border-cyan-500 text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 rounded-t-lg"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Semester Ganjil (Juli - Des)</span>
+                <span className="bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {totGanjilEff} Pekan
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveRmeTab("genap")}
+                className={`px-4 py-2 text-xs font-bold font-mono transition-all border-b-2 cursor-pointer flex items-center space-x-2 shrink-0 ${
+                  activeRmeTab === "genap"
+                    ? "border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 rounded-t-lg"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Semester Genap (Jan - Juni)</span>
+                <span className="bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {totGenapEff} Pekan
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveRmeTab("agenda")}
+                className={`px-4 py-2 text-xs font-bold font-mono transition-all border-b-2 cursor-pointer flex items-center space-x-2 shrink-0 ${
+                  activeRmeTab === "agenda"
+                    ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-t-lg"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Kalender Pendidikan &amp; Agenda Sekolah</span>
+                <span className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {agendaSekolah.length} Event
+                </span>
+              </button>
+            </div>
+
+            {/* Tab 1: Semester Ganjil */}
+            {activeRmeTab === "ganjil" && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
+                      <th className="p-2.5 w-10 text-center font-bold">No</th>
+                      <th className="p-2.5 w-32 font-bold">Bulan</th>
+                      <th className="p-2.5 w-28 text-center font-bold">Jumlah Pekan</th>
+                      <th className="p-2.5 w-32 text-center font-bold">Tdk Efektif</th>
+                      <th className="p-2.5 w-28 text-center font-bold text-cyan-600 dark:text-cyan-400">Efektif</th>
+                      <th className="p-2.5 font-bold">Keterangan / Agenda Kegiatan Sekolah</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                    {rmeGanjil.map((m, idx) => (
+                      <tr key={m.month} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.month}</td>
+                        <td className="p-2.5 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            max={6}
+                            value={m.totalWeeks}
+                            onChange={(e) => handleRmeGanjilChange(idx, "totalWeeks", parseInt(e.target.value) || 0)}
+                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-cyan-500"
+                          />
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            max={6}
+                            value={m.nonEffective}
+                            onChange={(e) => handleRmeGanjilChange(idx, "nonEffective", parseInt(e.target.value) || 0)}
+                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-red-500 text-red-500"
+                          />
+                        </td>
+                        <td className="p-2.5 text-center font-mono font-extrabold text-cyan-600 dark:text-cyan-400 text-sm">
+                          {m.effective}
+                        </td>
+                        <td className="p-2.5">
+                          <input
+                            type="text"
+                            value={m.note}
+                            onChange={(e) => handleRmeGanjilChange(idx, "note", e.target.value)}
+                            placeholder="Contoh: MPLS, PTS, SAS, Libur Semester"
+                            className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-cyan-500"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100/80 dark:bg-slate-900/80 font-bold border-t border-slate-300 dark:border-white/10">
+                      <td colSpan={2} className="p-2.5 text-center text-slate-700 dark:text-slate-300">
+                        Jumlah Semester Ganjil
+                      </td>
+                      <td className="p-2.5 text-center font-mono">{totGanjilTotal}</td>
+                      <td className="p-2.5 text-center font-mono text-red-500">{totGanjilNon}</td>
+                      <td className="p-2.5 text-center font-mono text-cyan-600 dark:text-cyan-400 text-sm font-extrabold">
+                        {totGanjilEff}
+                      </td>
+                      <td className="p-2.5 text-xs text-slate-500 font-mono">
+                        = {jpGanjil} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
+            {/* Tab 2: Semester Genap */}
+            {activeRmeTab === "genap" && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
+                      <th className="p-2.5 w-10 text-center font-bold">No</th>
+                      <th className="p-2.5 w-32 font-bold">Bulan</th>
+                      <th className="p-2.5 w-28 text-center font-bold">Jumlah Pekan</th>
+                      <th className="p-2.5 w-32 text-center font-bold">Tdk Efektif</th>
+                      <th className="p-2.5 w-28 text-center font-bold text-indigo-600 dark:text-indigo-400">Efektif</th>
+                      <th className="p-2.5 font-bold">Keterangan / Agenda Kegiatan Sekolah</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                    {rmeGenap.map((m, idx) => (
+                      <tr key={m.month} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.month}</td>
+                        <td className="p-2.5 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            max={6}
+                            value={m.totalWeeks}
+                            onChange={(e) => handleRmeGenapChange(idx, "totalWeeks", parseInt(e.target.value) || 0)}
+                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-indigo-500"
+                          />
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <input
+                            type="number"
+                            min={0}
+                            max={6}
+                            value={m.nonEffective}
+                            onChange={(e) => handleRmeGenapChange(idx, "nonEffective", parseInt(e.target.value) || 0)}
+                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-red-500 text-red-500"
+                          />
+                        </td>
+                        <td className="p-2.5 text-center font-mono font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">
+                          {m.effective}
+                        </td>
+                        <td className="p-2.5">
+                          <input
+                            type="text"
+                            value={m.note}
+                            onChange={(e) => handleRmeGenapChange(idx, "note", e.target.value)}
+                            placeholder="Contoh: Libur Ramadhan, PTS Genap, SAT, Libur Kenaikan"
+                            className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-indigo-500"
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-slate-100/80 dark:bg-slate-900/80 font-bold border-t border-slate-300 dark:border-white/10">
+                      <td colSpan={2} className="p-2.5 text-center text-slate-700 dark:text-slate-300">
+                        Jumlah Semester Genap
+                      </td>
+                      <td className="p-2.5 text-center font-mono">{totGenapTotal}</td>
+                      <td className="p-2.5 text-center font-mono text-red-500">{totGenapNon}</td>
+                      <td className="p-2.5 text-center font-mono text-indigo-600 dark:text-indigo-400 text-sm font-extrabold">
+                        {totGenapEff}
+                      </td>
+                      <td className="p-2.5 text-xs text-slate-500 font-mono">
+                        = {jpGenap} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
+            {/* Tab 3: Kalender Pendidikan & Agenda Sekolah */}
+            {activeRmeTab === "agenda" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                    Daftar Agenda Kegiatan &amp; Libur Resmi Sekolah (Tahun Pelajaran {formData.year})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddAgenda}
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1.5 cursor-pointer transition-all font-mono shadow-sm"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Agenda Kegiatan</span>
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
+                        <th className="p-2.5 w-10 text-center font-bold">No</th>
+                        <th className="p-2.5 font-bold">Nama Agenda / Kegiatan Sekolah</th>
+                        <th className="p-2.5 w-48 font-bold">Rentang Waktu / Tanggal</th>
+                        <th className="p-2.5 w-28 text-center font-bold">Semester</th>
+                        <th className="p-2.5 w-32 text-center font-bold">Kategori</th>
+                        <th className="p-2.5 w-12 text-center font-bold">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                      {agendaSekolah.map((item, idx) => (
+                        <tr key={item.id} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                          <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
+                          <td className="p-2.5">
+                            <input
+                              type="text"
+                              value={item.kegiatan}
+                              onChange={(e) => handleAgendaChange(item.id, "kegiatan", e.target.value)}
+                              className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-emerald-500"
+                            />
+                          </td>
+                          <td className="p-2.5">
+                            <input
+                              type="text"
+                              value={item.waktu}
+                              onChange={(e) => handleAgendaChange(item.id, "waktu", e.target.value)}
+                              className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono outline-none focus:border-emerald-500"
+                            />
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <select
+                              value={item.semester}
+                              onChange={(e) => handleAgendaChange(item.id, "semester", e.target.value as any)}
+                              className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none text-slate-800 dark:text-slate-200"
+                            >
+                              <option value="Ganjil">Ganjil</option>
+                              <option value="Genap">Genap</option>
+                              <option value="Semua">Semua</option>
+                            </select>
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <select
+                              value={item.kategori}
+                              onChange={(e) => handleAgendaChange(item.id, "kategori", e.target.value as any)}
+                              className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none text-slate-800 dark:text-slate-200"
+                            >
+                              <option value="Kurikuler">Kurikuler</option>
+                              <option value="Asesmen">Asesmen</option>
+                              <option value="Libur">Libur</option>
+                              <option value="Karakter/P5">Karakter/P5</option>
+                            </select>
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAgenda(item.id)}
+                              className="text-slate-400 hover:text-red-500 p-1 transition-colors cursor-pointer"
+                              title="Hapus Agenda"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Catatan Pedoman Kalender Pendidikan Sekolah (Kebijakan Dinas / Yayasan):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={catatanKalender}
+                    onChange={(e) => setCatatanKalender(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-emerald-500 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Document Tab Navigation HUD */}
       <div className="glass-card rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg p-4 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3 border-b border-slate-200 dark:border-white/10 pb-3">
@@ -605,7 +1420,7 @@ Peserta didik mampu menulis gagasan, pikiran, pandangan, arahan atau pesan tertu
         </div>
 
         {/* Tab Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2">
           {docTypeList.map((doc) => {
             const Icon = doc.icon;
             const isTabActive = activeDoc === doc.id;

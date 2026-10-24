@@ -1138,6 +1138,34 @@ Format Objek JSON Per Slide:
       const cpRasional = formData?.cpRasional || "Pada akhir Fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja.";
       const cpElemen = formData?.cpElemen || `Elemen 1 — Menyimak: Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan dari berbagai tipe teks lisan.\nElemen 2 — Membaca dan Memirsa: Peserta didik mampu mengevaluasi informasi berupa gagasan dari teks deskripsi, laporan, narasi, eksplanasi, eksposisi.\nElemen 3 — Berbicara dan Mempresentasikan: Peserta didik mampu mengolah dan menyajikan gagasan untuk tujuan pengajuan usul dan solusi.\nElemen 4 — Menulis: Peserta didik mampu menulis gagasan tertulis secara logis, kritis, dan kreatif.`;
 
+      // Ekstraksi data RME & Kalender Pendidikan
+      const rmeData = formData?.rme;
+      let rmeContext = "";
+      if (rmeData) {
+        const ganjilStr = (rmeData.ganjil || []).map((m: any, i: number) => `  * ${m.month}: ${m.totalWeeks} pekan total, ${m.nonEffective} tidak efektif, ${m.effective} pekan efektif (Catatan: ${m.note || '-'})`).join("\n");
+        const genapStr = (rmeData.genap || []).map((m: any, i: number) => `  * ${m.month}: ${m.totalWeeks} pekan total, ${m.nonEffective} tidak efektif, ${m.effective} pekan efektif (Catatan: ${m.note || '-'})`).join("\n");
+        const agendaStr = (rmeData.agenda || []).map((a: any, i: number) => `  * [Sem ${a.semester || 'Semua'}] ${a.kegiatan} (${a.waktu || '-'}) [${a.kategori || 'Kurikuler'}]`).join("\n");
+        const sm = rmeData.summary || {};
+
+        rmeContext = `
+[REFERENSI RESMI RENCANA MINGGU EFEKTIF (RME) & KALENDER PENDIDIKAN DARI SEKOLAH]:
+- Beban Mengajar Mingguan: ${jpPerMinggu}
+- Semester Ganjil: ${sm.pekanGanjil || 20} Pekan Efektif (${sm.jpGanjil || 60} JP)
+${ganjilStr}
+
+- Semester Genap: ${sm.pekanGenap || 18} Pekan Efektif (${sm.jpGenap || 54} JP)
+${genapStr}
+
+- Total Pekan Efektif Tahunan: ${sm.totalPekan || 38} Pekan Efektif (${sm.totalJp || 114} JP)
+  * Alokasi Tatap Muka Intrakurikuler (75%): ${sm.jpIntrakurikuler || 86} JP
+  * Alokasi Projek P5 / Penguatan Karakter (25%): ${sm.jpP5 || 28} JP
+
+- Agenda Utama Kalender Pendidikan Sekolah:
+${agendaStr}
+- Catatan Pedoman Kalender: ${rmeData.catatanKalender || 'Sesuai Kalender Dinas Pendidikan dan Kebijakan Sekolah.'}
+`;
+      }
+
       const generalRules = `
 KETENTUAN UTAMA GENERASI HTML ADMINISTRASI:
 1. SANGAT PENTING - TANPA LOGO / GAMBAR: Kop Sekolah HANYA berisi teks nama dinas/pemerintah, nama sekolah, alamat, dan garis tebal pembatas. DILARANG MENAMBAHKAN TAG <img>, PLACEHOLDER [LOGO], ATAU GAMBAR APAPUN.
@@ -1148,7 +1176,38 @@ KETENTUAN UTAMA GENERASI HTML ADMINISTRASI:
 
       let docPrompt = "";
 
-      if (docType === "analisis_cp") {
+      if (docType === "rme") {
+        docPrompt = `Anda adalah asisten pembuatan perangkat administrasi pembelajaran Kurikulum Merdeka yang ahli dan berpengalaman. Tugas Anda adalah membuat dokumen **RENCANA MINGGU EFEKTIF (RME / RPE) & KALENDER PENDIDIKAN SEKOLAH** yang lengkap, rapi, presisi, dan siap cetak dalam format HTML.
+
+${generalRules}
+
+[DATA INPUT GURU & SEKOLAH]:
+- Satuan Pendidikan: ${schoolName}
+- Mata Pelajaran: ${subject} (${singkatanMapel})
+- Fase / Kelas: ${level}
+- Tahun Pelajaran: ${year}
+- Alokasi Beban: ${jpPerMinggu}
+- Nama Guru: ${teacher}
+- NIP Guru: ${nipTeacher}
+- Kota / Tanggal TTD: ${cityDate}
+- Nama Kepala Sekolah: ${principal}
+- NIP Kepala Sekolah: ${nipPrincipal}
+${rmeContext}
+
+STRUKTUR DOKUMEN HTML WAJIB:
+1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-RME-${singkatanMapel}-${level.replace(/\s+/g, '')} / Rev: 00 / Tgl: ${year.slice(0, 4)}
+2. BAGIAN A — IDENTITAS SATUAN PENDIDIKAN & PROGRAM (Tabel 2 Kolom)
+3. BAGIAN B — ANALISIS MINGGU EFEKTIF SEMESTER GANJIL (Tabel 6 kolom: No | Nama Bulan | Jumlah Minggu | Minggu Tdk Efektif | Minggu Efektif | Keterangan / Agenda Kegiatan Sekolah) beserta baris Total Jumlah Semester Ganjil.
+4. BAGIAN C — ANALISIS MINGGU EFEKTIF SEMESTER GENAP (Tabel 6 kolom: No | Nama Bulan | Jumlah Minggu | Minggu Tdk Efektif | Minggu Efektif | Keterangan / Agenda Kegiatan Sekolah) beserta baris Total Jumlah Semester Genap.
+5. BAGIAN D — REKAPITULASI RENCANA PEKAN EFEKTIF (RPE) & DISTRIBUSI JAM PELAJARAN (Tabel ringkasan: Pekan Efektif Ganjil, Pekan Efektif Genap, Total Pekan Tahunan, Total Jam Pelajaran, Alokasi Tatap Muka Intrakurikuler 75%, Alokasi Projek P5 / Penguatan Karakter 25%).
+6. BAGIAN E — MATRIKS AGENDA UTAMA KALENDER PENDIDIKAN SEKOLAH (Tabel 5 kolom: No | Agenda / Kegiatan Sekolah | Rentang Waktu / Tanggal | Semester | Kategori).
+7. Catatan Pedoman Kalender Pendidikan Sekolah.
+8. BAGIAN PENUTUP — TANDA TANGAN SEJAJAR KEPSEK & GURU DENGAN TABEL TAK TERLIHAT (BORDER 0).
+
+KETENTUAN LAYOUT HTML:
+- Hasilkan MURNI KODE HTML tanpa markdown fence.
+- CSS internal rapi, warna header #1a3a5c teks putih, @media print { @page { size: A4 portrait; margin: 1.5cm; } }.`;
+      } else if (docType === "analisis_cp") {
         docPrompt = `Anda adalah asisten pembuatan perangkat administrasi pembelajaran Kurikulum Merdeka yang ahli dan berpengalaman. Tugas Anda adalah membuat dokumen **ANALISIS CAPAIAN PEMBELAJARAN (CP)** yang lengkap, profesional, dan siap cetak dalam format HTML.
 
 ${generalRules}
@@ -1165,6 +1224,7 @@ ${generalRules}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - Rasional CP Umum: ${cpRasional}
 - CP Per Elemen: ${cpElemen}
+${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB (7 Bagian Wajib):
 1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-CP-${singkatanMapel}-${level.replace(/\s+/g, '')} / Rev: 00 / Tgl: ${year.slice(0, 4)}
@@ -1198,6 +1258,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB (4 Bagian Wajib):
 1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-TP-${singkatanMapel}-${level.replace(/\s+/g, '')} / Rev: 00 / Tgl: ${year.slice(0, 4)}
@@ -1228,6 +1289,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB (4 Bagian Wajib):
 1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-ATP-${singkatanMapel}-${level.replace(/\s+/g, '')} / Rev: 00 / Tgl: ${year.slice(0, 4)}
@@ -1258,12 +1320,15 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB:
 1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-PROTA-${singkatanMapel}-${level.replace(/\s+/g, '')} / Rev: 00 / Tgl: ${year.slice(0, 4)}
 2. BAGIAN A — IDENTITAS
-3. BAGIAN B — DISTRIBUSI MINGGU EFEKTIF — KALENDER PENDIDIKAN (Tabel 7 kolom: Sem | Bulan | Minggu Kalender | Tdk Efektif | Efektif | JP | Keterangan). Sertakan Subtotal Semester 1, Subtotal Semester 2, dan Total Keseluruhan.
-4. BAGIAN C — RENCANA PROGRAM TAHUNAN (Tabel 5 kolom: No | Kode TP | Tujuan Pembelajaran & Materi Pokok | Elemen CP | Alokasi JP | Semester). Sertakan header kelompok Semester 1 & Semester 2, serta baris CADANGAN.
+3. BAGIAN B — DISTRIBUSI MINGGU EFEKTIF — KALENDER PENDIDIKAN (Tabel 7 kolom: Sem | Bulan | Minggu Kalender | Tdk Efektif | Efektif | JP | Keterangan).
+   PENTING: Gunakan tabel rincian data RME dari guru di atas secara persis untuk ke-12 bulan (Juli-Desember & Januari-Juni)! Subtotal Ganjil, Subtotal Genap, dan Total Keseluruhan harus tepat sama dengan data RME guru.
+4. BAGIAN C — RENCANA PROGRAM TAHUNAN (Tabel 5 kolom: No | Kode TP | Tujuan Pembelajaran & Materi Pokok | Elemen CP | Alokasi JP | Semester).
+   PENTING: Total Alokasi JP TP Semester 1 HARUS TEPAT SAMA dengan JP Efektif Ganjil, dan Semester 2 TEPAT SAMA dengan JP Efektif Genap. Selisih Prota dan RME dijamin 0 JP!
 5. BAGIAN PENUTUP — TANDA TANGAN SEJAJAR KEPSEK & GURU DENGAN TABEL TAK TERLIHAT (BORDER 0).
 
 KETENTUAN LAYOUT HTML:
@@ -1289,11 +1354,13 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB:
 1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-PROSEM-${singkatanMapel}-${level.replace(/\s+/g, '')}-S1 / Rev: 00 / Tgl: ${year.slice(0, 4)}
 2. Header Identitas & Legenda Warna Sel Matriks (Biru #d0e4f7 = JP Aktif, Merah #ffd6d6 = Libur, Kuning #fff3cd = PTS, Hijau #d4edda = PAS/PAT)
 3. TABEL MATRIKS DISTRIBUSI PEMBELAJARAN PER MINGGU (Kolom: No | Kode TP | Tujuan & Materi Pokok | JP | Kolom-kolom Minggu M1..M5 per Bulan | Keterangan Model Pembelajaran).
+   PENTING: Kolom-kolom minggu setiap bulan (Juli–Desember untuk Sem 1, Januari–Juni untuk Sem 2) harus merefleksikan pekan efektif dan agenda tidak efektif (seperti MPLS di Juli M1-M2, PTS di September, SAS di Desember) dari data RME guru di atas!
    PENTING: SEMUA KEPALA KOLOM TABEL (TH) HARUS DIBERI STYLING INLINE: style="background-color:#1a3a5c; color:#ffffff; font-weight:bold; text-align:center;" AGAR TERLIHAT KONTRAST DI WORD DAN BROWSER!
 4. Catatan Keterangan Bulan Tidak Efektif & Asesmen
 5. BAGIAN PENUTUP — TANDA TANGAN SEJAJAR KEPSEK & GURU DENGAN TABEL TAK TERLIHAT (BORDER 0).

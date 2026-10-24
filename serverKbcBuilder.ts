@@ -215,6 +215,215 @@ export function buildKbcFallbackDocument(docType: string, formData: KbcFormData 
   const kop = renderKop(d);
   const ttd = renderSignatures(d);
 
+  if (docType === "rme") {
+    const rme = formData.rme || {};
+    const rmeGanjil = (rme.ganjil && rme.ganjil.length) ? rme.ganjil : [
+      { month: "Juli", totalWeeks: 4, nonEffective: 2, effective: 2, note: "MPLS & Pengenalan Lingkungan Belajar (2 Pekan)" },
+      { month: "Agustus", totalWeeks: 5, nonEffective: 0, effective: 5, note: "Pekan Efektif Penuh (Peringatan HUT RI)" },
+      { month: "September", totalWeeks: 4, nonEffective: 1, effective: 3, note: "Penilaian Sumatif Tengah Semester (PTS/STS) Ganjil (1 Pekan)" },
+      { month: "Oktober", totalWeeks: 5, nonEffective: 0, effective: 5, note: "Pekan Efektif Penuh" },
+      { month: "November", totalWeeks: 4, nonEffective: 0, effective: 4, note: "Pekan Efektif Penuh" },
+      { month: "Desember", totalWeeks: 4, nonEffective: 3, effective: 1, note: "Sumatif Akhir Semester (SAS), Pembagian Rapor & Libur Semester 1 (3 Pekan)" }
+    ];
+    const rmeGenap = (rme.genap && rme.genap.length) ? rme.genap : [
+      { month: "Januari", totalWeeks: 4, nonEffective: 0, effective: 4, note: "Pekan Efektif Penuh" },
+      { month: "Februari", totalWeeks: 4, nonEffective: 0, effective: 4, note: "Pekan Efektif Penuh" },
+      { month: "Maret", totalWeeks: 5, nonEffective: 2, effective: 3, note: "Libur Awal Ramadhan & PTS/STS Genap (2 Pekan)" },
+      { month: "April", totalWeeks: 4, nonEffective: 2, effective: 2, note: "Libur Hari Raya Idul Fitri & Ujian Akhir Jenjang (2 Pekan)" },
+      { month: "Mei", totalWeeks: 5, nonEffective: 1, effective: 4, note: "Sumatif Akhir Tahun (SAT) Genap (1 Pekan)" },
+      { month: "Juni", totalWeeks: 4, nonEffective: 3, effective: 1, note: "Pengolahan Rapor, Wisuda & Libur Kenaikan Kelas (3 Pekan)" }
+    ];
+    const agendaList = (rme.agenda && rme.agenda.length) ? rme.agenda : [
+      { kegiatan: "Masa Pengenalan Lingkungan Sekolah (MPLS)", waktu: "13 - 24 Juli 2026", semester: "Ganjil", kategori: "Kurikuler" },
+      { kegiatan: "Peringatan HUT RI Ke-81", waktu: "17 Agustus 2026", semester: "Ganjil", kategori: "Karakter/P5" },
+      { kegiatan: "Penilaian Sumatif Tengah Semester (STS) Ganjil", waktu: "21 - 26 September 2026", semester: "Ganjil", kategori: "Asesmen" },
+      { kegiatan: "Sumatif Akhir Semester (SAS) Ganjil", waktu: "30 Nov - 11 Des 2026", semester: "Ganjil", kategori: "Asesmen" },
+      { kegiatan: "Penerimaan Rapor & Libur Semester Ganjil", waktu: "18 Des 2026 - 3 Jan 2027", semester: "Ganjil", kategori: "Libur" },
+      { kegiatan: "Hari Pertama Masuk Semester Genap", waktu: "4 Januari 2027", semester: "Genap", kategori: "Kurikuler" },
+      { kegiatan: "Perkiraan Libur Awal Ramadhan 1448 H", waktu: "8 - 13 Maret 2027", semester: "Genap", kategori: "Libur" },
+      { kegiatan: "Penilaian Sumatif Tengah Semester (STS) Genap", waktu: "15 - 20 Maret 2027", semester: "Genap", kategori: "Asesmen" },
+      { kegiatan: "Libur Hari Raya Idul Fitri 1448 H", waktu: "22 Maret - 3 April 2027", semester: "Genap", kategori: "Libur" },
+      { kegiatan: "Sumatif Akhir Tahun (SAT) Genap", waktu: "24 Mei - 4 Juni 2027", semester: "Genap", kategori: "Asesmen" },
+      { kegiatan: "Penerimaan Rapor & Libur Kenaikan Kelas", waktu: "18 Juni - 10 Juli 2027", semester: "Genap", kategori: "Libur" }
+    ];
+
+    const jpNum = parseInt(d.jpPerMinggu) || 3;
+    let totG1Weeks = 0, totG1Non = 0, totG1Eff = 0;
+    let totG2Weeks = 0, totG2Non = 0, totG2Eff = 0;
+
+    let rowsGanjil = rmeGanjil.map((r: any, idx: number) => {
+      totG1Weeks += Number(r.totalWeeks || 0);
+      totG1Non += Number(r.nonEffective || 0);
+      totG1Eff += Number(r.effective || 0);
+      return `<tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td><strong>${r.month}</strong></td>
+        <td style="text-align:center;">${r.totalWeeks}</td>
+        <td style="text-align:center;">${r.nonEffective}</td>
+        <td style="text-align:center; font-weight:bold; color:#1a3a5c;">${r.effective}</td>
+        <td>${r.note || '-'}</td>
+      </tr>`;
+    }).join("");
+
+    let rowsGenap = rmeGenap.map((r: any, idx: number) => {
+      totG2Weeks += Number(r.totalWeeks || 0);
+      totG2Non += Number(r.nonEffective || 0);
+      totG2Eff += Number(r.effective || 0);
+      return `<tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td><strong>${r.month}</strong></td>
+        <td style="text-align:center;">${r.totalWeeks}</td>
+        <td style="text-align:center;">${r.nonEffective}</td>
+        <td style="text-align:center; font-weight:bold; color:#1a3a5c;">${r.effective}</td>
+        <td>${r.note || '-'}</td>
+      </tr>`;
+    }).join("");
+
+    const totEffYear = totG1Eff + totG2Eff;
+    const totJpYear = totEffYear * jpNum;
+    const jpIntra = Math.round(totJpYear * 0.75);
+    const jpP5 = totJpYear - jpIntra;
+
+    let rowsAgenda = agendaList.map((a: any, idx: number) => `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td><strong>${a.kegiatan}</strong></td>
+        <td style="text-align:center;">${a.waktu}</td>
+        <td style="text-align:center;">${a.semester || 'Ganjil'}</td>
+        <td style="text-align:center;"><span style="padding:2px 8px; border-radius:4px; font-size:9pt; background-color:#e0f2fe; color:#0369a1;">${a.kategori || 'Kurikuler'}</span></td>
+      </tr>
+    `).join("");
+
+    return `
+${COMMON_CSS}
+${kop}
+<div class="doc-title">RENCANA MINGGU EFEKTIF (RME / RPE) & KALENDER PENDIDIKAN</div>
+<div class="doc-subtitle">Analisis Pekan Efektif, Beban Mengajar & Distribusi Jam Pelajaran | Tahun Pelajaran ${d.year}</div>
+
+<div class="section-title">A. IDENTITAS PROGRAM & SATUAN PENDIDIKAN</div>
+<table class="kbc-table">
+  <tr><td style="width:25%; font-weight:bold; background-color:#f1f5f9;">Satuan Pendidikan</td><td>${d.schoolName}</td><td style="width:25%; font-weight:bold; background-color:#f1f5f9;">Mata Pelajaran</td><td>${d.subject} (${d.singkatanMapel})</td></tr>
+  <tr><td style="font-weight:bold; background-color:#f1f5f9;">Fase / Kelas</td><td>${d.level}</td><td style="font-weight:bold; background-color:#f1f5f9;">Tahun Pelajaran</td><td>${d.year}</td></tr>
+  <tr><td style="font-weight:bold; background-color:#f1f5f9;">Beban Tatap Muka</td><td>${d.jpPerMinggu}</td><td style="font-weight:bold; background-color:#f1f5f9;">Guru Pengampu</td><td>${d.teacher}</td></tr>
+</table>
+
+<div class="section-title">B. ANALISIS MINGGU EFEKTIF SEMESTER GANJIL</div>
+<table class="kbc-table">
+  <thead>
+    <tr>
+      <th style="width:6%;">No</th>
+      <th style="width:18%;">Nama Bulan</th>
+      <th style="width:14%;">Jumlah Minggu</th>
+      <th style="width:16%;">Minggu Tdk Efektif</th>
+      <th style="width:14%;">Minggu Efektif</th>
+      <th>Keterangan / Agenda Kegiatan Sekolah</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rowsGanjil}
+    <tr style="background-color:#f1f5f9; font-weight:bold;">
+      <td colspan="2" style="text-align:center;">Jumlah Semester Ganjil</td>
+      <td style="text-align:center;">${totG1Weeks}</td>
+      <td style="text-align:center;">${totG1Non}</td>
+      <td style="text-align:center; color:#1a3a5c;">${totG1Eff}</td>
+      <td>Pekan Efektif Ganjil = ${totG1Eff * jpNum} Jam Pelajaran (JP)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="section-title">C. ANALISIS MINGGU EFEKTIF SEMESTER GENAP</div>
+<table class="kbc-table">
+  <thead>
+    <tr>
+      <th style="width:6%;">No</th>
+      <th style="width:18%;">Nama Bulan</th>
+      <th style="width:14%;">Jumlah Minggu</th>
+      <th style="width:16%;">Minggu Tdk Efektif</th>
+      <th style="width:14%;">Minggu Efektif</th>
+      <th>Keterangan / Agenda Kegiatan Sekolah</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rowsGenap}
+    <tr style="background-color:#f1f5f9; font-weight:bold;">
+      <td colspan="2" style="text-align:center;">Jumlah Semester Genap</td>
+      <td style="text-align:center;">${totG2Weeks}</td>
+      <td style="text-align:center;">${totG2Non}</td>
+      <td style="text-align:center; color:#1a3a5c;">${totG2Eff}</td>
+      <td>Pekan Efektif Genap = ${totG2Eff * jpNum} Jam Pelajaran (JP)</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="section-title">D. REKAPITULASI RENCANA PEKAN EFEKTIF (RPE) & DISTRIBUSI JAM PELAJARAN</div>
+<table class="kbc-table">
+  <thead>
+    <tr>
+      <th style="width:8%;">No</th>
+      <th>Komponen Distribusi Jam Pembelajaran</th>
+      <th style="width:22%; text-align:center;">Jumlah Pekan</th>
+      <th style="width:25%; text-align:center;">Alokasi Jam Pelajaran (JP)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align:center;">1</td>
+      <td>Jumlah Pekan Efektif Semester Ganjil</td>
+      <td style="text-align:center; font-weight:bold;">${totG1Eff} Pekan</td>
+      <td style="text-align:center; font-weight:bold;">${totG1Eff * jpNum} JP</td>
+    </tr>
+    <tr>
+      <td style="text-align:center;">2</td>
+      <td>Jumlah Pekan Efektif Semester Genap</td>
+      <td style="text-align:center; font-weight:bold;">${totG2Eff} Pekan</td>
+      <td style="text-align:center; font-weight:bold;">${totG2Eff * jpNum} JP</td>
+    </tr>
+    <tr style="background-color:#f8fafc; font-weight:bold;">
+      <td style="text-align:center;">3</td>
+      <td><strong>Total Pekan Efektif 1 Tahun Ajaran</strong></td>
+      <td style="text-align:center; color:#1a3a5c;">${totEffYear} Pekan</td>
+      <td style="text-align:center; color:#1a3a5c;">${totJpYear} JP</td>
+    </tr>
+    <tr>
+      <td style="text-align:center;">4</td>
+      <td>Alokasi Tatap Muka Intrakurikuler (75%)</td>
+      <td style="text-align:center;">${Math.round(totEffYear * 0.75)} Pekan</td>
+      <td style="text-align:center; font-weight:bold; color:#166534;">${jpIntra} JP</td>
+    </tr>
+    <tr>
+      <td style="text-align:center;">5</td>
+      <td>Alokasi Projek Penguatan Profil Pelajar (P5) / Karakter (25%)</td>
+      <td style="text-align:center;">${totEffYear - Math.round(totEffYear * 0.75)} Pekan</td>
+      <td style="text-align:center; font-weight:bold; color:#9a3412;">${jpP5} JP</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="section-title">E. KALENDER PENDIDIKAN & AGENDA UTAMA SEKOLAH</div>
+<table class="kbc-table">
+  <thead>
+    <tr>
+      <th style="width:6%;">No</th>
+      <th>Nama Agenda / Kegiatan Sekolah</th>
+      <th style="width:25%; text-align:center;">Rentang Waktu / Tanggal</th>
+      <th style="width:12%; text-align:center;">Semester</th>
+      <th style="width:16%; text-align:center;">Kategori</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rowsAgenda}
+  </tbody>
+</table>
+
+<div style="background-color:#f8fafc; border-left:4px solid #1a3a5c; padding:10px 14px; margin-bottom:20px; font-size:10pt;">
+  <strong>Catatan Pedoman Kalender Pendidikan:</strong><br>
+  ${rme.catatanKalender || 'Kalender Pendidikan berpedoman pada Keputusan Dinas Pendidikan dan Kalender Akademik Resmi Sekolah. Pelaksanaan penilaian formatif dan sumatif menyesuaikan jadwal pekan efektif di atas.'}
+</div>
+
+${ttd}
+`;
+  }
+
   if (docType === "analisis_cp") {
     return `
 ${COMMON_CSS}

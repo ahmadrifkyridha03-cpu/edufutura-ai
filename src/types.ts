@@ -140,3 +140,36 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
 }
+
+export interface RmeMonthItem {
+  month: string;
+  totalWeeks: number;
+  nonEffective: number;
+  effective: number;
+  note: string;
+}
+
+export interface AgendaSekolahItem {
+  id: string;
+  kegiatan: string;
+  waktu: string;
+  semester: "Ganjil" | "Genap" | "Semua";
+  kategori: "Kurikuler" | "Asesmen" | "Libur" | "Karakter/P5";
+}
+
+export interface RmeData {
+  ganjil: RmeMonthItem[];
+  genap: RmeMonthItem[];
+  agenda: AgendaSekolahItem[];
+  catatanKalender: string;
+  summary?: {
+    pekanGanjil: number;
+    pekanGenap: number;
+    totalPekan: number;
+    jpGanjil: number;
+    jpGenap: number;
+    totalJp: number;
+    jpIntrakurikuler: number;
+    jpP5: number;
+  };
+}
