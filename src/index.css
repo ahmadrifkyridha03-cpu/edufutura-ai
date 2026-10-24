@@ -1,0 +1,280 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #0f172a;
+    background-color: #f8fafc;
+  }
+
+  .dark body {
+    color: #f1f5f9;
+    background-color: #030712;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  /* Prevent blue tap highlight overlay on mobile devices */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Native touch behavior and smooth scrolling */
+  html, body {
+    touch-action: manipulation;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Custom futuristic scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.35);
+  }
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.6);
+  }
+
+  /* Safe Area Inset Padding for modern mobile screens */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 12px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Cyber-Glassmorphism Surface Tokens */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark .glass-card {
+    background: rgba(11, 15, 25, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-card-hover {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .glass-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.12);
+  }
+  .dark .glass-card-hover:hover {
+    border-color: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 12px 32px -4px rgba(139, 92, 246, 0.2);
+  }
+
+  /* Ambient Cyber Glow Effects */
+  .glow-cyan {
+    box-shadow: 0 0 25px -4px rgba(6, 182, 212, 0.35);
+  }
+  .glow-violet {
+    box-shadow: 0 0 25px -4px rgba(139, 92, 246, 0.35);
+  }
+  .glow-emerald {
+    box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.35);
+  }
+  .glow-amber {
+    box-shadow: 0 0 25px -4px rgba(245, 158, 11, 0.35);
+  }
+
+  .glow-border-cyan {
+    border: 1px solid rgba(6, 182, 212, 0.5);
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.25);
+  }
+  .glow-border-violet {
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.25);
+  }
+
+  /* Futuristic Cyber Grid Pattern Background */
+  .cyber-grid {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  }
+  .dark .cyber-grid {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  }
+
+  /* Futuristic Shimmer animation */
+  .cyber-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite linear;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulseLaser {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.03); }
+}
+
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes floatOrb {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+.animate-pulse-laser {
+  animation: pulseLaser 2.4s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: floatOrb 5s ease-in-out infinite;
+}
+
+/* Specific Mobile Layout Fixes (@media max-width: 768px) */
+@media (max-width: 768px) {
+  header {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .dashboard-stats-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  .line-clamp-2 {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    overflow: visible !important;
+  }
+
+  button, a {
+    touch-action: manipulation;
+  }
+}
+
+/* Global Print Stylesheet for Report Headers, Logos, and Sheets */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm;
+  }
+
+  html, body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Completely hide all app chrome and web elements */
+  nav, header, aside, .floating-dock, .no-print, button, select, input, .custom-scrollbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  img, .logo-sekolah, .kop-logo {
+    display: inline-block !important;
+    visibility: visible !important;
+    max-height: 80px;
+    width: auto;
+    object-fit: contain;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Formal Report Sheet Print Isolation */
+  .print-rapor-sheet {
+    display: block !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .print-rapor-sheet * {
+    color: #000000 !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .print-rapor-sheet table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    margin-bottom: 12px !important;
+  }
+
+  .print-rapor-sheet thead {
+    display: table-header-group !important;
+  }
+
+  .print-rapor-sheet tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-rapor-sheet th {
+    border: 1px solid #000000 !important;
+    padding: 6px 8px !important;
+    background-color: #f1f5f9 !important;
+    font-weight: bold !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-rapor-sheet td {
+    border: 1px solid #000000 !important;
+    padding: 6px 8px !important;
+  }
+}

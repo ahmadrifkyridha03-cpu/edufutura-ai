@@ -1,0 +1,406 @@
+{
+  "communities": {
+    "0": [
+      "ref_jspdf",
+      "ref_jspdf_autotable",
+      "src_components_agendamengajarview_agendamengajarviewprops",
+      "src_components_analisisperkembangansiswa",
+      "src_components_analisisperkembangansiswa_analisisperkembangansiswa",
+      "src_components_analisisperkembangansiswa_analisisperkembangansiswaprops",
+      "src_components_analisisperkembangansiswa_student_colors",
+      "src_components_backuppenilaianmodal_backuppenilaianmodalprops",
+      "src_components_bimbinganwaliview_bimbinganwaliviewprops",
+      "src_components_cetakkartuqrview_cetakkartuqrviewprops",
+      "src_components_cetakraportview",
+      "src_components_cetakraportview_cetakraportviewprops",
+      "src_components_cetakraportview_mapelnilairaport",
+      "src_components_dashboardview",
+      "src_components_dashboardview_dashboardview",
+      "src_components_dashboardview_dashboardviewprops",
+      "src_components_inputabsensiview_inputabsensiviewprops",
+      "src_components_inputpenilaianview_inputpenilaianviewprops",
+      "src_components_jadwalmengajarview_jadwalmengajarviewprops",
+      "src_components_kelolamapelview_kelolamapelviewprops",
+      "src_components_kelolasiswaview_kelolasiswaviewprops",
+      "src_components_pengaturanview_pengaturanviewprops",
+      "src_components_pusatlaporanview",
+      "src_components_pusatlaporanview_pusatlaporanviewprops",
+      "src_components_rankingsiswadashboard",
+      "src_components_rankingsiswadashboard_rankingsiswadashboard",
+      "src_components_rankingsiswadashboard_rankingsiswadashboardprops",
+      "src_components_rankingsiswadashboard_studentrankitem",
+      "src_components_rinciannilaisiswamodal",
+      "src_components_rinciannilaisiswamodal_rinciannilaisiswamodal",
+      "src_components_rinciannilaisiswamodal_rinciannilaisiswamodalprops",
+      "src_types",
+      "src_types_bimbinganwali",
+      "src_types_datanilai",
+      "src_types_jadwal",
+      "src_types_jurnalagenda",
+      "src_types_logabsensi",
+      "src_types_mapel",
+      "src_types_pengaturan",
+      "src_types_siswa",
+      "src_types_siswabimbingan"
+    ],
+    "1": [
+      "ref_lucide_react",
+      "ref_react",
+      "ref_react_dom",
+      "src_app",
+      "src_app_ai_tools_items",
+      "src_app_akademik_items",
+      "src_app_default_config",
+      "src_app_laporan_items",
+      "src_components_asistenguruaiview",
+      "src_components_asistenguruaiview_asistenguruaiview",
+      "src_components_asistenguruaiview_asistenguruaiviewprops",
+      "src_components_downloadperangkatajarview",
+      "src_components_downloadperangkatajarview_downloadperangkatajarview",
+      "src_components_generatorailainnyaview",
+      "src_components_generatorailainnyaview_generatorailainnyaview",
+      "src_components_generatorlkpdaiview",
+      "src_components_generatorlkpdaiview_generatorlkpdaiview",
+      "src_components_generatorlkpdaiview_generatorlkpdaiviewprops",
+      "src_components_generatorperangkatajaraiview",
+      "src_components_generatorperangkatajaraiview_generatorperangkatajaraiview",
+      "src_components_generatorperangkatajaraiview_generatorperangkatajaraiviewprops",
+      "src_components_header",
+      "src_components_header_header",
+      "src_components_header_headerprops",
+      "src_components_header_tab_titles",
+      "src_components_loginview",
+      "src_components_loginview_loginview",
+      "src_components_loginview_loginviewprops",
+      "src_components_perangkatajarkbcview",
+      "src_components_perangkatajarkbcview_perangkatajarkbcview",
+      "src_components_perangkatajarkbcview_perangkatajarkbcviewprops",
+      "src_components_sidebar",
+      "src_components_sidebar_sidebar",
+      "src_components_sidebar_sidebarprops",
+      "src_components_welcomeguidemodal",
+      "src_components_welcomeguidemodal_welcomeguidemodal",
+      "src_components_welcomeguidemodal_welcomeguidemodalprops",
+      "src_index",
+      "src_main",
+      "src_types_chatmessage"
+    ],
+    "2": [
+      "ref_jsbarcode",
+      "ref_qrcode",
+      "src_components_backuppenilaianmodal",
+      "src_components_backuppenilaianmodal_backuppenilaianmodal",
+      "src_components_cetakkartuqrview",
+      "src_components_cetakkartuqrview_cetakkartuqrview",
+      "src_components_cetakraportview_cetakraportview",
+      "src_components_inputpenilaianview",
+      "src_components_inputpenilaianview_categorizejenispenilaian",
+      "src_components_inputpenilaianview_hitungnilaiakhirsiswa",
+      "src_components_inputpenilaianview_inputpenilaianview",
+      "src_components_modulajaraiview",
+      "src_components_modulajaraiview_modulajaraiview",
+      "src_components_modulajaraiview_modulajaraiviewprops",
+      "src_components_pusatlaporanview_pusatlaporanview",
+      "src_lib_swal",
+      "src_lib_swal_notifycetakerror",
+      "src_lib_swal_notifycetaksuccess",
+      "src_lib_swal_notifyunduherror",
+      "src_lib_swal_notifyunduhsuccess",
+      "src_lib_swal_showerroralert",
+      "src_lib_swal_showsuccessalert",
+      "src_lib_swal_showtoasterror",
+      "src_lib_swal_showtoastsuccess",
+      "src_lib_swal_toast",
+      "src_types_modulformstate"
+    ],
+    "3": [
+      "src_app_app",
+      "src_components_pengaturanview",
+      "src_components_pengaturanview_pengaturanview",
+      "src_components_resetdatabaseview",
+      "src_components_resetdatabaseview_resetdatabaseview",
+      "src_components_resetdatabaseview_resetdatabaseviewprops",
+      "src_lib_firebase",
+      "src_lib_firebase_batchdeletedocuments",
+      "src_lib_firebase_batchsavedocuments",
+      "src_lib_firebase_checkdatabaseauthorization",
+      "src_lib_firebase_checkpengaturandatabaseauthorization",
+      "src_lib_firebase_clearalldatabasecollections",
+      "src_lib_firebase_firebaseconfig",
+      "src_lib_firebase_firestore",
+      "src_lib_firebase_getremixstorage",
+      "src_lib_firebase_isisolatedremix",
+      "src_lib_firebase_isremixinstance",
+      "src_lib_firebase_savepengaturan",
+      "src_lib_firebase_setremixstorage",
+      "src_lib_firebase_subscribecollection",
+      "src_lib_firebase_subscribepengaturan",
+      "src_lib_firebase_syncalllocaldatatofirestore"
+    ],
+    "4": [
+      "src_components_agendamengajarview",
+      "src_components_agendamengajarview_agendamengajarview",
+      "src_components_bimbinganwaliview",
+      "src_components_bimbinganwaliview_bimbinganwaliview",
+      "src_components_inputabsensiview",
+      "src_components_inputabsensiview_inputabsensiview",
+      "src_components_jadwalmengajarview",
+      "src_components_jadwalmengajarview_jadwalmengajarview",
+      "src_components_kelolamapelview",
+      "src_components_kelolamapelview_kelolamapelview",
+      "src_components_kelolasiswaview",
+      "src_components_kelolasiswaview_kelolasiswaview",
+      "src_lib_firebase_collections",
+      "src_lib_firebase_deletedocument",
+      "src_lib_firebase_savedocument",
+      "src_lib_swal_confirmdeletealert",
+      "src_lib_swal_notifyediterror",
+      "src_lib_swal_notifyeditsuccess",
+      "src_lib_swal_notifyhapuserror",
+      "src_lib_swal_notifyhapussuccess",
+      "src_lib_swal_notifysimpanerror",
+      "src_lib_swal_notifysimpansuccess"
+    ],
+    "5": [
+      "package_dependencies",
+      "package_dependencies_dotenv",
+      "package_dependencies_express",
+      "package_dependencies_firebase",
+      "package_dependencies_google_genai",
+      "package_dependencies_jsbarcode",
+      "package_dependencies_jspdf",
+      "package_dependencies_jspdf_autotable",
+      "package_dependencies_jsqr",
+      "package_dependencies_lucide_react",
+      "package_dependencies_motion",
+      "package_dependencies_pptxgenjs",
+      "package_dependencies_qrcode",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_sweetalert2",
+      "package_dependencies_tailwindcss_vite",
+      "package_dependencies_vite",
+      "package_dependencies_vitejs_plugin_react",
+      "package_dependencies_xlsx"
+    ],
+    "6": [
+      "package",
+      "package_name",
+      "package_private",
+      "package_type",
+      "package_version",
+      "ref_autoprefixer",
+      "ref_esbuild",
+      "ref_firebase",
+      "ref_jsqr",
+      "ref_motion",
+      "ref_pptxgenjs",
+      "ref_sweetalert2",
+      "ref_tailwindcss",
+      "ref_tsx",
+      "ref_types_express",
+      "ref_types_node",
+      "ref_types_qrcode",
+      "ref_typescript",
+      "ref_xlsx"
+    ],
+    "7": [
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowimportingtsextensions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_experimentaldecorators",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduledetection",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_target",
+      "tsconfig_compileroptions_usedefineforclassfields"
+    ],
+    "8": [
+      "firebase_applet_config",
+      "ref_dotenv",
+      "ref_express",
+      "ref_google_genai",
+      "server",
+      "server_startserver",
+      "serverkbcbuilder",
+      "serverkbcbuilder_buildkbcfallbackdocument",
+      "serverkbcbuilder_kbcformdata",
+      "serverkbcbuilder_renderkop",
+      "serverkbcbuilder_rendersignatures"
+    ],
+    "9": [
+      "package_devdependencies",
+      "package_devdependencies_autoprefixer",
+      "package_devdependencies_esbuild",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_tsx",
+      "package_devdependencies_types_express",
+      "package_devdependencies_types_node",
+      "package_devdependencies_types_qrcode",
+      "package_devdependencies_typescript",
+      "package_devdependencies_vite"
+    ],
+    "10": [
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_clean",
+      "package_scripts_dev",
+      "package_scripts_lint",
+      "package_scripts_start"
+    ],
+    "11": [
+      "ref_path",
+      "ref_tailwindcss_vite",
+      "ref_vite",
+      "ref_vitejs_plugin_react",
+      "vite_config"
+    ],
+    "12": [
+      "src_types_jsqr_d",
+      "src_types_jsqr_d_jsqr",
+      "src_types_jsqr_d_options",
+      "src_types_jsqr_d_qrcode"
+    ],
+    "13": [
+      "src_vite_env_d",
+      "src_vite_env_d_importmeta",
+      "src_vite_env_d_importmetaenv"
+    ]
+  },
+  "cohesion": {
+    "0": 0.15609756097560976,
+    "1": 0.08717948717948718,
+    "2": 0.20307692307692307,
+    "3": 0.2077922077922078,
+    "4": 0.5194805194805194,
+    "5": 0.1,
+    "6": 0.10526315789473684,
+    "7": 0.125,
+    "8": 0.2545454545454545,
+    "9": 0.2,
+    "10": 0.3333333333333333,
+    "11": 0.4,
+    "12": 0.5,
+    "13": 0.6666666666666666
+  },
+  "gods": [
+    {
+      "id": "src_types_siswa",
+      "label": "Siswa",
+      "degree": 34
+    },
+    {
+      "id": "src_types_pengaturan",
+      "label": "Pengaturan",
+      "degree": 33
+    },
+    {
+      "id": "ref_react",
+      "label": "react",
+      "degree": 31
+    },
+    {
+      "id": "ref_lucide_react",
+      "label": "lucide-react",
+      "degree": 30
+    },
+    {
+      "id": "src_app_app",
+      "label": "App()",
+      "degree": 30
+    },
+    {
+      "id": "src_types_mapel",
+      "label": "Mapel",
+      "degree": 29
+    },
+    {
+      "id": "src_lib_swal_notifysimpansuccess",
+      "label": "notifySimpanSuccess()",
+      "degree": 23
+    },
+    {
+      "id": "src_lib_swal_notifysimpanerror",
+      "label": "notifySimpanError()",
+      "degree": 23
+    },
+    {
+      "id": "src_components_inputpenilaianview_inputpenilaianview",
+      "label": "InputPenilaianView()",
+      "degree": 22
+    },
+    {
+      "id": "src_types_datanilai",
+      "label": "DataNilai",
+      "degree": 21
+    }
+  ],
+  "surprises": [
+    {
+      "source": "AsistenGuruAIViewProps",
+      "target": "Pengaturan",
+      "source_files": [
+        "src/components/AsistenGuruAIView.tsx",
+        "src/types.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `AsistenGuruAIViewProps` unexpectedly reaches hub `Pengaturan`"
+    },
+    {
+      "source": "GeneratorLkpdAIViewProps",
+      "target": "Pengaturan",
+      "source_files": [
+        "src/components/GeneratorLkpdAIView.tsx",
+        "src/types.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `GeneratorLkpdAIViewProps` unexpectedly reaches hub `Pengaturan`"
+    },
+    {
+      "source": "GeneratorPerangkatAjarAIViewProps",
+      "target": "Pengaturan",
+      "source_files": [
+        "src/components/GeneratorPerangkatAjarAIView.tsx",
+        "src/types.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `GeneratorPerangkatAjarAIViewProps` unexpectedly reaches hub `Pengaturan`"
+    },
+    {
+      "source": "HeaderProps",
+      "target": "Pengaturan",
+      "source_files": [
+        "src/components/Header.tsx",
+        "src/types.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `HeaderProps` unexpectedly reaches hub `Pengaturan`"
+    },
+    {
+      "source": "ModulAjarAIViewProps",
+      "target": "Pengaturan",
+      "source_files": [
+        "src/components/ModulAjarAIView.tsx",
+        "src/types.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "bridges separate communities; peripheral node `ModulAjarAIViewProps` unexpectedly reaches hub `Pengaturan`"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}
