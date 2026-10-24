@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import firebaseConfigData from "./firebase-applet-config.json";
 import { buildKbcFallbackDocument } from "./serverKbcBuilder";
 import { buildKurikulumMerdekaDocument } from "./src/utils/kurikulumMerdekaBuilder";
 
