@@ -26,6 +26,7 @@ import { Pengaturan, RmeMonthItem, AgendaSekolahItem } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
 import { buildKurikulumMerdekaDocument } from "../utils/kurikulumMerdekaBuilder";
 import { savePerangkatSyncData, extractSyncDataFromPerangkat } from "../utils/perangkatSyncHelper";
+import { AiProgressStepper } from "./AiProgressStepper";
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
@@ -1259,147 +1260,379 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
 
             {/* Tab 1: Semester Ganjil */}
             {activeRmeTab === "ganjil" && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
-                      <th className="p-2.5 w-10 text-center font-bold">No</th>
-                      <th className="p-2.5 w-32 font-bold">Bulan</th>
-                      <th className="p-2.5 w-28 text-center font-bold">Jumlah Pekan</th>
-                      <th className="p-2.5 w-32 text-center font-bold">Tdk Efektif</th>
-                      <th className="p-2.5 w-28 text-center font-bold text-cyan-600 dark:text-cyan-400">Efektif</th>
-                      <th className="p-2.5 font-bold">Keterangan / Agenda Kegiatan Sekolah</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                    {rmeGanjil.map((m, idx) => (
-                      <tr key={m.month} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                        <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
-                        <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.month}</td>
-                        <td className="p-2.5 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={m.totalWeeks}
-                            onChange={(e) => handleRmeGanjilChange(idx, "totalWeeks", parseInt(e.target.value) || 0)}
-                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-cyan-500"
-                          />
+              <div className="space-y-4">
+                {/* Desktop Table View (>= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
+                        <th className="p-2.5 w-10 text-center font-bold">No</th>
+                        <th className="p-2.5 w-32 font-bold">Bulan</th>
+                        <th className="p-2.5 w-28 text-center font-bold">Jumlah Pekan</th>
+                        <th className="p-2.5 w-32 text-center font-bold">Tdk Efektif</th>
+                        <th className="p-2.5 w-28 text-center font-bold text-cyan-700 dark:text-cyan-400">Efektif</th>
+                        <th className="p-2.5 font-bold">Keterangan / Agenda Kegiatan Sekolah</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                      {rmeGanjil.map((m, idx) => (
+                        <tr key={m.month} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                          <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
+                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.month}</td>
+                          <td className="p-2.5 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={m.totalWeeks}
+                              onChange={(e) => handleRmeGanjilChange(idx, "totalWeeks", parseInt(e.target.value) || 0)}
+                              className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-cyan-500"
+                            />
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={m.nonEffective}
+                              onChange={(e) => handleRmeGanjilChange(idx, "nonEffective", parseInt(e.target.value) || 0)}
+                              className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-red-500 text-red-500"
+                            />
+                          </td>
+                          <td className="p-2.5 text-center font-mono font-extrabold text-cyan-700 dark:text-cyan-400 text-sm">
+                            {m.effective}
+                          </td>
+                          <td className="p-2.5">
+                            <input
+                              type="text"
+                              value={m.note}
+                              onChange={(e) => handleRmeGanjilChange(idx, "note", e.target.value)}
+                              placeholder="Contoh: MPLS, PTS, SAS, Libur Semester"
+                              className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-cyan-500"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-100/80 dark:bg-slate-900/80 font-bold border-t border-slate-300 dark:border-white/10">
+                        <td colSpan={2} className="p-2.5 text-center text-slate-700 dark:text-slate-300">
+                          Jumlah Semester Ganjil
                         </td>
-                        <td className="p-2.5 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={m.nonEffective}
-                            onChange={(e) => handleRmeGanjilChange(idx, "nonEffective", parseInt(e.target.value) || 0)}
-                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-red-500 text-red-500"
-                          />
+                        <td className="p-2.5 text-center font-mono">{totGanjilTotal}</td>
+                        <td className="p-2.5 text-center font-mono text-red-500">{totGanjilNon}</td>
+                        <td className="p-2.5 text-center font-mono text-cyan-700 dark:text-cyan-400 text-sm font-extrabold">
+                          {totGanjilEff}
                         </td>
-                        <td className="p-2.5 text-center font-mono font-extrabold text-cyan-600 dark:text-cyan-400 text-sm">
-                          {m.effective}
-                        </td>
-                        <td className="p-2.5">
-                          <input
-                            type="text"
-                            value={m.note}
-                            onChange={(e) => handleRmeGanjilChange(idx, "note", e.target.value)}
-                            placeholder="Contoh: MPLS, PTS, SAS, Libur Semester"
-                            className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-cyan-500"
-                          />
+                        <td className="p-2.5 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                          = {jpGanjil} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-100/80 dark:bg-slate-900/80 font-bold border-t border-slate-300 dark:border-white/10">
-                      <td colSpan={2} className="p-2.5 text-center text-slate-700 dark:text-slate-300">
-                        Jumlah Semester Ganjil
-                      </td>
-                      <td className="p-2.5 text-center font-mono">{totGanjilTotal}</td>
-                      <td className="p-2.5 text-center font-mono text-red-500">{totGanjilNon}</td>
-                      <td className="p-2.5 text-center font-mono text-cyan-600 dark:text-cyan-400 text-sm font-extrabold">
-                        {totGanjilEff}
-                      </td>
-                      <td className="p-2.5 text-xs text-slate-500 font-mono">
-                        = {jpGanjil} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Mobile Card Deck View (< md) */}
+                <div className="grid grid-cols-1 gap-3 md:hidden">
+                  {rmeGanjil.map((m, idx) => (
+                    <div
+                      key={m.month}
+                      className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/90 shadow-sm space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="w-6 h-6 rounded-lg bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 flex items-center justify-center font-mono font-bold text-xs">
+                            {idx + 1}
+                          </span>
+                          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {m.month}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-mono font-extrabold bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800/60">
+                          {m.effective} Pekan Efektif
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5 text-xs">
+                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 space-y-1">
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                            Total Pekan
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGanjilChange(idx, "totalWeeks", Math.max(0, m.totalWeeks - 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="font-mono font-bold text-base text-slate-900 dark:text-white">
+                              {m.totalWeeks}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGanjilChange(idx, "totalWeeks", Math.min(6, m.totalWeeks + 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 space-y-1">
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                            Tidak Efektif
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGanjilChange(idx, "nonEffective", Math.max(0, m.nonEffective - 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="font-mono font-bold text-base text-red-600 dark:text-red-400">
+                              {m.nonEffective}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGanjilChange(idx, "nonEffective", Math.min(6, m.nonEffective + 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                          Keterangan / Agenda Kegiatan
+                        </label>
+                        <input
+                          type="text"
+                          value={m.note}
+                          onChange={(e) => handleRmeGanjilChange(idx, "note", e.target.value)}
+                          placeholder="Contoh: MPLS, PTS, SAS, Libur Semester"
+                          className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 text-xs font-medium outline-none focus:border-cyan-500 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Summary Card for Mobile */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-500/10 via-slate-100 to-cyan-500/5 dark:from-cyan-950/40 dark:via-slate-900 dark:to-cyan-900/20 border border-cyan-500/30 space-y-2">
+                    <h5 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                      Ringkasan Semester Ganjil
+                    </h5>
+                    <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                      <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Total Pekan</span>
+                        <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200">{totGanjilTotal}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Tdk Efektif</span>
+                        <span className="font-mono font-bold text-sm text-red-600 dark:text-red-400">{totGanjilNon}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-cyan-500/30">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Efektif</span>
+                        <span className="font-mono font-extrabold text-sm text-cyan-700 dark:text-cyan-300">{totGanjilEff}</span>
+                      </div>
+                    </div>
+                    <p className="text-center text-[11px] font-mono text-cyan-800 dark:text-cyan-300 font-bold pt-1">
+                      = {jpGanjil} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Tab 2: Semester Genap */}
             {activeRmeTab === "genap" && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
-                      <th className="p-2.5 w-10 text-center font-bold">No</th>
-                      <th className="p-2.5 w-32 font-bold">Bulan</th>
-                      <th className="p-2.5 w-28 text-center font-bold">Jumlah Pekan</th>
-                      <th className="p-2.5 w-32 text-center font-bold">Tdk Efektif</th>
-                      <th className="p-2.5 w-28 text-center font-bold text-indigo-600 dark:text-indigo-400">Efektif</th>
-                      <th className="p-2.5 font-bold">Keterangan / Agenda Kegiatan Sekolah</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-white/5">
-                    {rmeGenap.map((m, idx) => (
-                      <tr key={m.month} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
-                        <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
-                        <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.month}</td>
-                        <td className="p-2.5 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={m.totalWeeks}
-                            onChange={(e) => handleRmeGenapChange(idx, "totalWeeks", parseInt(e.target.value) || 0)}
-                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-indigo-500"
-                          />
+              <div className="space-y-4">
+                {/* Desktop Table View (>= md) */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
+                        <th className="p-2.5 w-10 text-center font-bold">No</th>
+                        <th className="p-2.5 w-32 font-bold">Bulan</th>
+                        <th className="p-2.5 w-28 text-center font-bold">Jumlah Pekan</th>
+                        <th className="p-2.5 w-32 text-center font-bold">Tdk Efektif</th>
+                        <th className="p-2.5 w-28 text-center font-bold text-indigo-700 dark:text-indigo-400">Efektif</th>
+                        <th className="p-2.5 font-bold">Keterangan / Agenda Kegiatan Sekolah</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                      {rmeGenap.map((m, idx) => (
+                        <tr key={m.month} className="hover:bg-slate-50/50 dark:hover:bg-white/5 transition-colors">
+                          <td className="p-2.5 text-center text-slate-500 font-mono">{idx + 1}</td>
+                          <td className="p-2.5 font-bold text-slate-900 dark:text-white">{m.month}</td>
+                          <td className="p-2.5 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={m.totalWeeks}
+                              onChange={(e) => handleRmeGenapChange(idx, "totalWeeks", parseInt(e.target.value) || 0)}
+                              className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-indigo-500"
+                            />
+                          </td>
+                          <td className="p-2.5 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={m.nonEffective}
+                              onChange={(e) => handleRmeGenapChange(idx, "nonEffective", parseInt(e.target.value) || 0)}
+                              className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-red-500 text-red-500"
+                            />
+                          </td>
+                          <td className="p-2.5 text-center font-mono font-extrabold text-indigo-700 dark:text-indigo-400 text-sm">
+                            {m.effective}
+                          </td>
+                          <td className="p-2.5">
+                            <input
+                              type="text"
+                              value={m.note}
+                              onChange={(e) => handleRmeGenapChange(idx, "note", e.target.value)}
+                              placeholder="Contoh: Libur Ramadhan, PTS Genap, SAT, Libur Kenaikan"
+                              className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-indigo-500"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-100/80 dark:bg-slate-900/80 font-bold border-t border-slate-300 dark:border-white/10">
+                        <td colSpan={2} className="p-2.5 text-center text-slate-700 dark:text-slate-300">
+                          Jumlah Semester Genap
                         </td>
-                        <td className="p-2.5 text-center">
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={m.nonEffective}
-                            onChange={(e) => handleRmeGenapChange(idx, "nonEffective", parseInt(e.target.value) || 0)}
-                            className="w-16 px-2 py-1 text-center rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono font-bold outline-none focus:border-red-500 text-red-500"
-                          />
+                        <td className="p-2.5 text-center font-mono">{totGenapTotal}</td>
+                        <td className="p-2.5 text-center font-mono text-red-500">{totGenapNon}</td>
+                        <td className="p-2.5 text-center font-mono text-indigo-700 dark:text-indigo-400 text-sm font-extrabold">
+                          {totGenapEff}
                         </td>
-                        <td className="p-2.5 text-center font-mono font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">
-                          {m.effective}
-                        </td>
-                        <td className="p-2.5">
-                          <input
-                            type="text"
-                            value={m.note}
-                            onChange={(e) => handleRmeGenapChange(idx, "note", e.target.value)}
-                            placeholder="Contoh: Libur Ramadhan, PTS Genap, SAT, Libur Kenaikan"
-                            className="w-full px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium outline-none focus:border-indigo-500"
-                          />
+                        <td className="p-2.5 text-xs text-slate-600 dark:text-slate-400 font-mono">
+                          = {jpGenap} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-100/80 dark:bg-slate-900/80 font-bold border-t border-slate-300 dark:border-white/10">
-                      <td colSpan={2} className="p-2.5 text-center text-slate-700 dark:text-slate-300">
-                        Jumlah Semester Genap
-                      </td>
-                      <td className="p-2.5 text-center font-mono">{totGenapTotal}</td>
-                      <td className="p-2.5 text-center font-mono text-red-500">{totGenapNon}</td>
-                      <td className="p-2.5 text-center font-mono text-indigo-600 dark:text-indigo-400 text-sm font-extrabold">
-                        {totGenapEff}
-                      </td>
-                      <td className="p-2.5 text-xs text-slate-500 font-mono">
-                        = {jpGenap} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Mobile Card Deck View (< md) */}
+                <div className="grid grid-cols-1 gap-3 md:hidden">
+                  {rmeGenap.map((m, idx) => (
+                    <div
+                      key={m.month}
+                      className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/90 shadow-sm space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-mono font-bold text-xs">
+                            {idx + 1}
+                          </span>
+                          <span className="font-extrabold text-sm text-slate-900 dark:text-white">
+                            {m.month}
+                          </span>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-full text-xs font-mono font-extrabold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                          {m.effective} Pekan Efektif
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2.5 text-xs">
+                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 space-y-1">
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                            Total Pekan
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGenapChange(idx, "totalWeeks", Math.max(0, m.totalWeeks - 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="font-mono font-bold text-base text-slate-900 dark:text-white">
+                              {m.totalWeeks}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGenapChange(idx, "totalWeeks", Math.min(6, m.totalWeeks + 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/5 space-y-1">
+                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                            Tidak Efektif
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGenapChange(idx, "nonEffective", Math.max(0, m.nonEffective - 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="font-mono font-bold text-base text-red-600 dark:text-red-400">
+                              {m.nonEffective}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRmeGenapChange(idx, "nonEffective", Math.min(6, m.nonEffective + 1))}
+                              className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-300 active:scale-95 transition-all text-base cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                          Keterangan / Agenda Kegiatan
+                        </label>
+                        <input
+                          type="text"
+                          value={m.note}
+                          onChange={(e) => handleRmeGenapChange(idx, "note", e.target.value)}
+                          placeholder="Contoh: Libur Ramadhan, PTS Genap, SAT, Libur Kenaikan"
+                          className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 text-xs font-medium outline-none focus:border-indigo-500 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Summary Card for Mobile */}
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 via-slate-100 to-indigo-500/5 dark:from-indigo-950/40 dark:via-slate-900 dark:to-indigo-900/20 border border-indigo-500/30 space-y-2">
+                    <h5 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                      Ringkasan Semester Genap
+                    </h5>
+                    <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                      <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Total Pekan</span>
+                        <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200">{totGenapTotal}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-white/5">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Tdk Efektif</span>
+                        <span className="font-mono font-bold text-sm text-red-600 dark:text-red-400">{totGenapNon}</span>
+                      </div>
+                      <div className="p-2 rounded-lg bg-white/80 dark:bg-slate-800/80 border border-indigo-500/30">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Efektif</span>
+                        <span className="font-mono font-extrabold text-sm text-indigo-700 dark:text-indigo-300">{totGenapEff}</span>
+                      </div>
+                    </div>
+                    <p className="text-center text-[11px] font-mono text-indigo-800 dark:text-indigo-300 font-bold pt-1">
+                      = {jpGenap} Jam Pelajaran (JP) @ {parsedJpPerMinggu} JP/Minggu
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1420,7 +1653,8 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Desktop Table (>= md) */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-xs text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300">
@@ -1489,6 +1723,96 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
                       ))}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card Deck (< md) */}
+                <div className="grid grid-cols-1 gap-3 md:hidden">
+                  {agendaSekolah.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-slate-900/90 shadow-sm space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+                            {item.semester}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-semibold">
+                            {item.kategori}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAgenda(item.id)}
+                          className="text-slate-400 hover:text-red-500 p-1.5 transition-colors cursor-pointer rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
+                          title="Hapus Agenda"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                          Nama Kegiatan / Agenda
+                        </label>
+                        <input
+                          type="text"
+                          value={item.kegiatan}
+                          onChange={(e) => handleAgendaChange(item.id, "kegiatan", e.target.value)}
+                          placeholder="Nama kegiatan..."
+                          className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium text-xs outline-none focus:border-emerald-500 text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block">
+                          Rentang Waktu / Tanggal
+                        </label>
+                        <input
+                          type="text"
+                          value={item.waktu}
+                          onChange={(e) => handleAgendaChange(item.id, "waktu", e.target.value)}
+                          placeholder="Contoh: 13 - 24 Juli 2026"
+                          className="w-full px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono text-xs outline-none focus:border-emerald-500 text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">
+                            Semester
+                          </label>
+                          <select
+                            value={item.semester}
+                            onChange={(e) => handleAgendaChange(item.id, "semester", e.target.value as any)}
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium text-xs outline-none text-slate-800 dark:text-slate-200"
+                          >
+                            <option value="Ganjil">Ganjil</option>
+                            <option value="Genap">Genap</option>
+                            <option value="Semua">Semua</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 block mb-0.5">
+                            Kategori
+                          </label>
+                          <select
+                            value={item.kategori}
+                            onChange={(e) => handleAgendaChange(item.id, "kategori", e.target.value as any)}
+                            className="w-full px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium text-xs outline-none text-slate-800 dark:text-slate-200"
+                          >
+                            <option value="Kurikuler">Kurikuler</option>
+                            <option value="Asesmen">Asesmen</option>
+                            <option value="Libur">Libur</option>
+                            <option value="Karakter/P5">Karakter/P5</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 <div>
@@ -1560,16 +1884,12 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
         </div>
       </div>
 
-      {/* Loading overlay if generating */}
+      {/* Multi-Stage AI Progress Stepper during generation */}
       {isGenerating && (
-        <div className="glass-card border border-cyan-500/40 p-6 rounded-2xl flex items-center justify-center space-x-4 animate-pulse shadow-[0_0_25px_rgba(6,182,212,0.2)]">
-          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-          <div>
-            <p className="font-extrabold text-cyan-900 dark:text-cyan-200 text-sm md:text-base font-display">
-              {generatingProgress || "Sedang memproses AI Perangkat Ajar..."}
-            </p>
-          </div>
-        </div>
+        <AiProgressStepper 
+          overallProgress={generatingProgress || "Sedang memproses AI Perangkat Ajar..."} 
+          estimatedSeconds={30} 
+        />
       )}
 
       {/* Output Document Display & Action Bar */}

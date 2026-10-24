@@ -34,6 +34,7 @@ import {
   PerangkatAjarSyncData, 
   PerangkatBabItem 
 } from "../utils/perangkatSyncHelper";
+import { AiProgressStepper } from "./AiProgressStepper";
 
 interface ModulAjarAIViewProps {
   config: Pengaturan;
@@ -840,7 +841,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
 
               {/* Data Identitas Modul */}
               <div className="space-y-3">
-                <p className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/10 pb-1 font-display">
+                <p className="text-[11px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/10 pb-1 font-display">
                   Identitas Modul Ajar
                 </p>
 
@@ -943,7 +944,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
           {activeStep === 2 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-1.5">
-                <p className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider font-display">
+                <p className="text-[11px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider font-display">
                   Topik & Strategi Pembelajaran (1 Bab Penuh)
                 </p>
                 <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
@@ -994,7 +995,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                   <button
                     type="button"
                     onClick={() => setIsManualBabInput(!isManualBabInput)}
-                    className="text-[10.5px] font-mono text-cyan-600 dark:text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                    className="text-[10.5px] font-mono text-cyan-700 dark:text-cyan-400 hover:text-cyan-900 dark:hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer font-bold"
                   >
                     {isManualBabInput ? "← Pilih dari Hasil Perangkat Ajar" : "✏️ Ketik Judul Bab Manual"}
                   </button>
@@ -1306,7 +1307,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
               </p>
               <div className="grid grid-cols-2 gap-2 text-left max-w-md w-full text-[11px]">
                 <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10">
-                  <span className="font-bold text-cyan-600 dark:text-cyan-400 block mb-0.5">✓ 1. Template Bawaan</span>
+                  <span className="font-bold text-cyan-700 dark:text-cyan-400 block mb-0.5">✓ 1. Template Bawaan</span>
                   Standar Merdeka, Deep Learning Pro, Ringkas, & Kemenag/KBC
                 </div>
                 <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-emerald-300 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20">
@@ -1317,50 +1318,45 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
             </div>
           )}
 
-          {/* Laser Scanning Telemetry Status during Loading */}
+          {/* Multi-Stage AI Progress Stepper during Generation */}
           {loading && (
-            <div className="h-[540px] flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">
+            <div className="py-6 space-y-6 max-w-2xl mx-auto w-full">
+              <AiProgressStepper 
+                overallProgress="Deep Learning Engine sedang menyusun Modul Ajar..." 
+                estimatedSeconds={26} 
+              />
+
               {/* Virtual Document Scanning Hologram */}
-              <div className="w-72 h-88 rounded-xl bg-white/5 border border-cyan-500/30 relative overflow-hidden flex flex-col justify-between p-4 shadow-[0_0_30px_rgba(6,182,212,0.2)]">
-                {/* Horizontal Laser Scanning Line */}
-                <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] animate-pulse-laser top-1/2 -translate-y-1/2" />
-                
-                {/* Hologram Header Wireframe */}
-                <div className="space-y-2 opacity-50">
-                  <div className="h-3 w-1/2 bg-cyan-400/40 rounded mx-auto" />
-                  <div className="h-2 w-3/4 bg-cyan-400/20 rounded mx-auto" />
-                  <div className="h-0.5 w-full bg-cyan-400/30 mt-2" />
+              <div className="p-6 rounded-2xl bg-white/40 dark:bg-slate-900/40 border border-cyan-500/20 flex flex-col items-center justify-center text-center shadow-sm">
+                <div className="w-72 h-72 rounded-xl bg-white/10 dark:bg-white/5 border border-cyan-500/30 relative overflow-hidden flex flex-col justify-between p-4 shadow-[0_0_30px_rgba(6,182,212,0.15)]">
+                  {/* Horizontal Laser Scanning Line */}
+                  <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee] animate-pulse-laser top-1/2 -translate-y-1/2" />
+                  
+                  {/* Hologram Header Wireframe */}
+                  <div className="space-y-2 opacity-50">
+                    <div className="h-3 w-1/2 bg-cyan-400/40 rounded mx-auto" />
+                    <div className="h-2 w-3/4 bg-cyan-400/20 rounded mx-auto" />
+                    <div className="h-0.5 w-full bg-cyan-400/30 mt-2" />
+                  </div>
+
+                  {/* Hologram Body Skeleton */}
+                  <div className="space-y-2 opacity-40">
+                    <div className="h-2 w-full bg-cyan-400/20 rounded" />
+                    <div className="h-2 w-5/6 bg-cyan-400/20 rounded" />
+                    <div className="h-2 w-4/6 bg-cyan-400/20 rounded" />
+                    <div className="h-10 w-full border border-cyan-400/30 rounded" />
+                  </div>
+
+                  {/* Hologram Footer */}
+                  <div className="flex justify-between opacity-70 pt-2 border-t border-cyan-400/20 text-[9px] font-mono text-cyan-700 dark:text-cyan-300">
+                    <span>MODUL_AJAR.HTML</span>
+                    <span>DEEP_LEARNING_3D</span>
+                  </div>
                 </div>
 
-                {/* Hologram Body Skeleton */}
-                <div className="space-y-2 opacity-40">
-                  <div className="h-2 w-full bg-cyan-400/20 rounded" />
-                  <div className="h-2 w-5/6 bg-cyan-400/20 rounded" />
-                  <div className="h-2 w-4/6 bg-cyan-400/20 rounded" />
-                  <div className="h-12 w-full border border-cyan-400/30 rounded" />
-                </div>
-
-                {/* Hologram Footer */}
-                <div className="flex justify-between opacity-50 pt-2 border-t border-cyan-400/20 text-[8px] font-mono text-cyan-300">
-                  <span>MODUL_AJAR.HTML</span>
-                  <span>SYNCING_PROMPTS...</span>
-                </div>
-              </div>
-
-              {/* Console Telemetry readout */}
-              <div className="mt-6 space-y-2 max-w-md w-full">
-                <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-300 text-xs font-mono">
-                  <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                  <span>AI_SYNTHESIS_STAGE [{telemetryStage + 1}/4]</span>
-                </div>
-                <p className="text-xs font-mono text-cyan-400/90 font-bold tracking-tight">
-                  {telemetryStages[telemetryStage]}
-                </p>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-cyan-400 to-indigo-500 h-1.5 transition-all duration-700 rounded-full"
-                    style={{ width: `${((telemetryStage + 1) / telemetryStages.length) * 100}%` }}
-                  />
+                <div className="mt-4 flex items-center space-x-2 text-xs font-mono text-cyan-800 dark:text-cyan-300">
+                  <Activity className="w-3.5 h-3.5 text-cyan-500 animate-pulse" />
+                  <span className="font-semibold">{telemetryStages[telemetryStage]}</span>
                 </div>
               </div>
             </div>
