@@ -17,6 +17,18 @@ export function createApiApp() {
   const app = express();
   app.use(express.json({ limit: "10mb" }));
 
+  // Normalisasi path jika Vercel Serverless Function melakukan rewrite
+  app.use((req, _res, next) => {
+    if (req.url.startsWith("/api/index/")) {
+      req.url = req.url.replace("/api/index/", "/api/");
+    } else if (req.url.startsWith("/index/")) {
+      req.url = req.url.replace("/index/", "/api/");
+    } else if (req.url === "/api/index" || req.url === "/index") {
+      req.url = req.originalUrl || req.url;
+    }
+    next();
+  });
+
   // Initialize Gemini AI Client lazily or safely
   const getAiClient = () => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -119,12 +131,12 @@ export function createApiApp() {
   };
 
   // Health check API
-  app.get("/api/health", (_req, res) => {
+  app.get(["/api/health", "/health"], (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   // API Auth: Secure server-side authentication login endpoint
-  app.post("/api/auth/login", async (req, res) => {
+  app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
     try {
       const { username, password } = req.body || {};
       let validUsername = process.env.AUTH_USERNAME || "www.yefriharyanto.id";
@@ -191,7 +203,7 @@ export function createApiApp() {
     }
   });
 
-  app.get("/api/auth/verify", (req, res) => {
+  app.get(["/api/auth/verify", "/auth/verify"], (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ status: "error", valid: false });
@@ -209,7 +221,7 @@ export function createApiApp() {
   });
 
   // API 1: Generate AI Modul Ajar
-  app.post("/api/ai/generate-modul", async (req, res) => {
+  app.post(["/api/ai/generate-modul", "/ai/generate-modul"], async (req, res) => {
     try {
       const formData = req.body || {};
       const ai = getAiClient();
@@ -843,7 +855,7 @@ ${formatTemplate}`;
   });
 
   // API 2: AI Asisten Chatbot Guru
-  app.post("/api/ai/chat-asisten", async (req, res) => {
+  app.post(["/api/ai/chat-asisten", "/ai/chat-asisten"], async (req, res) => {
     try {
       const { message, context } = req.body;
       const ai = getAiClient();
@@ -1120,7 +1132,7 @@ Format Objek JSON Per Slide:
   });
 
   // API 4: PPT Generator AI Single Text Fallback
-  app.post("/api/ai/generate-ppt-text", async (req, res) => {
+  app.post(["/api/ai/generate-ppt-text", "/ai/generate-ppt-text"], async (req, res) => {
     const { subTitle, topic, subject } = req.body || {};
     res.json({
       status: "success",
@@ -1133,7 +1145,7 @@ Format Objek JSON Per Slide:
   });
 
   // API 5: PPT Generator AI Slide Image Illustration
-  app.post("/api/ai/generate-ppt-image", async (req, res) => {
+  app.post(["/api/ai/generate-ppt-image", "/ai/generate-ppt-image"], async (req, res) => {
     try {
       const { slideIndex, topic, subject } = req.body;
       const indexNum = slideIndex || 1;
@@ -1148,7 +1160,7 @@ Format Objek JSON Per Slide:
   });
 
   // API 6: Generator Perangkat Ajar AI (Analisis CP, TP, ATP, Prota, Prosem, KKTP)
-  app.post("/api/ai/generate-perangkat-ajar", async (req, res) => {
+  app.post(["/api/ai/generate-perangkat-ajar", "/ai/generate-perangkat-ajar"], async (req, res) => {
     try {
       const { docType, formData } = req.body || {};
       const ai = getAiClient();
@@ -1481,7 +1493,7 @@ KETENTUAN LAYOUT HTML:
   });
 
   // API Endpoint: Generator Perangkat Ajar KBC (Kurikulum Berbasis Cinta Kemenag)
-  app.post("/api/ai/generate-perangkat-ajar-kbc", async (req, res) => {
+  app.post(["/api/ai/generate-perangkat-ajar-kbc", "/ai/generate-perangkat-ajar-kbc"], async (req, res) => {
     try {
       const ai = getAiClient();
       const { docType, formData } = req.body;
