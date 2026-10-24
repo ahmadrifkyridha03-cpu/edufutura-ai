@@ -7,6 +7,12 @@ import { buildKurikulumMerdekaDocument } from "./src/utils/kurikulumMerdekaBuild
 
 dotenv.config();
 
+const firebaseConfigData = {
+  projectId: "witty-moment-pxctm",
+  firestoreDatabaseId: "ai-studio-remixaplikasigur-d65f5706-fc61-4aab-9635-2d037c9c7de3",
+  apiKey: "AIzaSyDOxfbraST4mXXUQ-npkk_705nfJJKvMg0"
+};
+
 export function createApiApp() {
   const app = express();
   app.use(express.json({ limit: "10mb" }));
