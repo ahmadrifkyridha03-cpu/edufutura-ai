@@ -944,6 +944,10 @@ ${ttd}
 `;
   }
 
+  if (docType === "sekolah_format1_iso") {
+    return buildAthirahIso015FallbackDocument(d);
+  }
+
   return `
 ${COMMON_CSS}
 ${kop}
@@ -1023,3 +1027,332 @@ ${pertemuanHtml}
 ${ttd}
 `;
 }
+
+/**
+ * Fallback generator for Modul Ajar Format 1 Athirah (100% KOP ISO 015 & 14 Baris Terkunci).
+ * Sesuai template resmi di D:\project perangkat ajar\2\gas-app.
+ */
+export function buildAthirahIso015FallbackDocument(d: any = {}): string {
+  const pertemuanCount = Math.max(1, Math.min(8, Number(d.jumlahPertemuan) || 2));
+  const jp = Number(d.jpPerPertemuan) || 2;
+  const docNumberIso = d.docNumberIso || "015/F/KUR/00/IX/2025";
+  const docNumberIso017 = "017/F/KUR/00/IX/2025";
+  const schoolName = d.schoolName || "SEKOLAH ISLAM ATHIRAH";
+  const topic = d.topikLokal || d.topik || "Materi Pokok Pembelajaran";
+  const model = d.learningModel || "Problem Based Learning (PBL)";
+  const tp = d.rumusanTp || "Peserta didik dapat memahami dan menerapkan konsep materi secara kritis, mandiri, dan bermakna.";
+  const kepemimpinan = d.kepemimpinan || "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras";
+  const spiritualisasi = d.spiritualisasi || `Kajian tadabbur ayat Al-Qur'an dan keteraturan ciptaan Allah SWT dalam materi ${topic} (QS. Yunus: 101).`;
+
+  let meetingsHtml = "";
+  for (let i = 1; i <= pertemuanCount; i++) {
+    meetingsHtml += `
+      <div style="margin-top: 10px; border-top: 1px dashed #94a3b8; padding-top: 8px;">
+        <strong style="color: #064e3b; font-size: 9.5pt;">Pertemuan ${i}: ${topic} Sub-bagian ${i} (${jp} JP)</strong>
+        <div style="margin: 4px 0 2px 0;"><strong>A. Kegiatan Pendahuluan (15 Menit):</strong></div>
+        <ul style="margin: 2px 0 6px 18px; padding: 0; font-size: 9pt;">
+          <li>Guru membuka kelas dengan salam Islami, menyapa peserta didik, dan memimpin doa bersama.</li>
+          <li>Apersepsi kontekstual menghubungkan materi pertemuan sebelumnya dengan fenomena nyata topik <em>${topic}</em>.</li>
+          <li>Menyampaikan tujuan pembelajaran, skenario aktivitas, dan kriteria asesmen yang dinilai.</li>
+        </ul>
+
+        <div style="margin: 4px 0 2px 0;"><strong>B. Kegiatan Inti (Deep Learning - ${jp * 45 - 30} Menit):</strong></div>
+        <div style="margin-left: 6px;">
+          <div style="background-color: #eff6ff; border-left: 3px solid #3b82f6; padding: 4px 8px; margin-bottom: 4px; border-radius: 4px;">
+            <strong style="color: #1e40af; font-size: 8.5pt;">🔵 Mindful Learning (Berkesadaran / Memahami):</strong>
+            <ul style="margin: 2px 0 2px 16px; padding: 0; font-size: 8.5pt;">
+              <li>Peserta didik mengamati tayangan stimulus atau studi kasus konkret mengenai <em>${topic}</em> dengan penuh konsentrasi.</li>
+              <li>Guru memfasilitasi tanya jawab pemantik untuk mengasah nalar kritis dan membangun kesadaran konsep awal.</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #f0fdf4; border-left: 3px solid #10b981; padding: 4px 8px; margin-bottom: 4px; border-radius: 4px;">
+            <strong style="color: #166534; font-size: 8.5pt;">🟢 Meaningful Learning (Bermakna / Mengaplikasi):</strong>
+            <ul style="margin: 2px 0 2px 16px; padding: 0; font-size: 8.5pt;">
+              <li>Peserta didik berkelompok secara kolaboratif mendiskusikan lembar eksplorasi LKPD yang mengaitkan materi dengan solusi nyata di lingkungan sekitar.</li>
+              <li>Guru melakukan pendampingan diferensiasi (scaffolding bagi yang butuh bantuan, pengayaan bagi yang cepat memahami).</li>
+            </ul>
+          </div>
+
+          <div style="background-color: #fff7ed; border-left: 3px solid #f97316; padding: 4px 8px; margin-bottom: 4px; border-radius: 4px;">
+            <strong style="color: #9a3412; font-size: 8.5pt;">🟠 Joyful Learning (Menggembirakan / Merefleksi):</strong>
+            <ul style="margin: 2px 0 2px 16px; padding: 0; font-size: 8.5pt;">
+              <li>Kelompok mempresentasikan hasil karya / temuan menggunakan metode <em>Gallery Walk</em> atau kuis interaktif yang menggembirakan.</li>
+              <li>Peserta didik saling memberikan apresiasi dan tanggapan membangun atas karya rekan sejawat.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="margin: 4px 0 2px 0;"><strong>C. Kegiatan Penutup (15 Menit):</strong></div>
+        <ul style="margin: 2px 0 6px 18px; padding: 0; font-size: 9pt;">
+          <li>Peserta didik bersama guru merangkum kesimpulan esensial dari pembelajaran.</li>
+          <li>Refleksi metakognitif singkat: apa yang paling bermakna hari ini dan apa yang masih perlu diperbaiki.</li>
+          <li>Guru memberikan motivasi penguatan karakter kepemimpinan dan menutup majelis dengan doa kafaratul majelis.</li>
+        </ul>
+      </div>
+    `;
+  }
+
+  let lampiran017Html = "";
+  if (d.sertakanLampiran017 !== false || d.sertakanLkpd !== false) {
+    lampiran017Html = `
+      <div style="page-break-before: always; margin-top: 30px;">
+        <!-- KOP ISO 017 -->
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000; margin-bottom: 12px; font-family: Arial, sans-serif;">
+          <tr>
+            <td rowspan="5" style="width: 90px; text-align: center; vertical-align: middle; border: 1px solid #000000; padding: 6px;">
+              <div style="font-size: 22px;">🌿</div>
+              <div style="font-size: 7.5pt; font-weight: bold; color: #064e3b;">ATHIRAH</div>
+            </td>
+            <td colspan="4" style="text-align: center; font-size: 11pt; font-weight: bold; border: 1px solid #000000; padding: 4px;">
+              ${schoolName.toUpperCase()}
+            </td>
+            <td rowspan="5" style="width: 90px; text-align: center; vertical-align: middle; border: 1px solid #000000; padding: 6px; background-color: #f0fdf4;">
+              <div style="font-size: 8pt; font-weight: bold; color: #064e3b; text-align: center;">
+                ISO 9001<br>MUTU
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td colspan="4" style="text-align: center; font-size: 10pt; font-weight: bold; border: 1px solid #000000; padding: 4px;">
+              FORMULIR - LAMPIRAN ASESMEN DALAM RPP/MA
+            </td>
+          </tr>
+          <tr>
+            <td style="width: 100px; font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">No. Dokumen</td>
+            <td style="width: 170px; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">${docNumberIso017}</td>
+            <td style="width: 70px; font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">Tgl. Terbit</td>
+            <td style="font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">17/09/2025</td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">No. Revisi</td>
+            <td style="font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">00</td>
+            <td style="font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">Halaman</td>
+            <td style="font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">1 dari 2</td>
+          </tr>
+        </table>
+
+        <div style="text-align: center; margin: 10px 0 12px;">
+          <h4 style="font-size: 11pt; font-weight: bold; color: #064e3b; margin: 0; text-transform: uppercase;">MATRIKS KISI-KISI & INSTRUMEN ASESMEN</h4>
+          <p style="font-size: 8.5pt; color: #374151; margin: 2px 0;">Mata Pelajaran: ${d.subject || 'Mata Pelajaran'} • Topik: ${topic} • Fase/Kelas: ${d.level || 'Fase D'}</p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: Arial, sans-serif; font-size: 8.5pt; margin-bottom: 14px;">
+          <thead>
+            <tr style="background-color: #064e3b; color: #ffffff;">
+              <th style="border: 1px solid #000000; padding: 5px; width: 110px;">Materi</th>
+              <th style="border: 1px solid #000000; padding: 5px; width: 140px;">Tujuan Pembelajaran</th>
+              <th style="border: 1px solid #000000; padding: 5px; width: 140px;">Indikator Asesmen (Soal)</th>
+              <th style="border: 1px solid #000000; padding: 5px; width: 75px;">Jenis Asesmen</th>
+              <th style="border: 1px solid #000000; padding: 5px;">Uraian Soal Tertulis</th>
+              <th style="border: 1px solid #000000; padding: 5px;">Deskripsi Aktivitas Non-tertulis</th>
+              <th style="border: 1px solid #000000; padding: 5px; width: 45px; text-align: center;">LKPD</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid #000000; padding: 5px; font-weight: bold;">${topic}</td>
+              <td style="border: 1px solid #000000; padding: 5px;">${tp}</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Peserta didik mampu mengidentifikasi dan menganalisis konsep dasar materi dalam pemecahan masalah.</td>
+              <td style="border: 1px solid #000000; padding: 5px; text-align: center;">Formatif</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Jelaskan keterkaitan konsep ${topic} dengan fenomena kontekstual di lingkungan sekitar dan berikan contoh konkretnya!</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Observasi unjuk kerja saat diskusi kelompok dan presentasi gagasan solusi di depan kelas.</td>
+              <td style="border: 1px solid #000000; padding: 5px; text-align: center; font-weight: bold; color: #064e3b;">✓ Ada</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #000000; padding: 5px; font-weight: bold;">Aplikasi Konsep</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Menerapkan solusi kontekstual berbasis pemikiran kritis dan terpadu.</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Peserta didik mampu menyusun kesimpulan dan rekomendasi perbaikan berbasis data.</td>
+              <td style="border: 1px solid #000000; padding: 5px; text-align: center;">Sumatif</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Analisis sebuah studi kasus kompleks terkait materi, lalu rumuskan strategi pemecahannya secara runtut dan sistematis!</td>
+              <td style="border: 1px solid #000000; padding: 5px;">Penilaian portofolio laporan kerja kelompok dan refleksi metakognitif tertulis.</td>
+              <td style="border: 1px solid #000000; padding: 5px; text-align: center; font-weight: bold; color: #064e3b;">✓ Ada</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  return `
+    <style>
+      .iso-kop-table { width: 100%; border-collapse: collapse; border: 1px solid #000000; margin-bottom: 12px; font-family: Arial, sans-serif; }
+      .iso-kop-table td { border: 1px solid #000000; padding: 4px 6px; font-size: 8pt; vertical-align: middle; }
+      .table-format1-athirah { width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: Arial, sans-serif; font-size: 9pt; margin-bottom: 14px; }
+      .table-format1-athirah th, .table-format1-athirah td { border: 1px solid #000000; padding: 5px 7px; vertical-align: top; line-height: 1.25; }
+      .table-format1-athirah th { background-color: #064e3b; color: #ffffff; font-weight: bold; text-align: center; }
+    </style>
+
+    <!-- KOP FORMULIR ISO RESMI ATHIRAH (TERKUNCI 100%) -->
+    <table class="iso-kop-table">
+      <tr>
+        <td rowspan="5" style="width: 90px; text-align: center; vertical-align: middle; border: 1px solid #000000; padding: 6px;">
+          <div style="font-size: 22px;">🌿</div>
+          <div style="font-size: 7.5pt; font-weight: bold; color: #064e3b;">ATHIRAH</div>
+        </td>
+        <td colspan="4" style="text-align: center; font-size: 11pt; font-weight: bold; letter-spacing: 0.5px; border: 1px solid #000000; padding: 4px;">
+          ${schoolName.toUpperCase()}
+        </td>
+        <td rowspan="5" style="width: 90px; text-align: center; vertical-align: middle; border: 1px solid #000000; padding: 6px; background-color: #f0fdf4;">
+          <div style="font-size: 8pt; font-weight: bold; color: #064e3b; text-align: center; line-height: 1.2;">
+            ISO 9001<br><span style="letter-spacing: 1px;">MUTU</span>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="4" style="text-align: center; font-size: 10pt; font-weight: bold; border: 1px solid #000000; padding: 4px;">
+          FORMULIR - MODUL AJAR
+        </td>
+      </tr>
+      <tr>
+        <td style="width: 100px; font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">No. Dokumen</td>
+        <td style="width: 170px; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">${docNumberIso}</td>
+        <td style="width: 70px; font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">Tgl. Terbit</td>
+        <td style="font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">17/09/2025</td>
+      </tr>
+      <tr>
+        <td style="font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">No. Revisi</td>
+        <td style="font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">00</td>
+        <td style="font-weight: 600; font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">Halaman</td>
+        <td style="font-size: 8pt; border: 1px solid #000000; padding: 3px 6px;">1 dari ${pertemuanCount >= 3 ? '4' : '3'}</td>
+      </tr>
+    </table>
+
+    <!-- TABEL IDENTITAS MODUL -->
+    <table class="table-format1-athirah" style="margin-bottom: 12px;">
+      <tr>
+        <td style="width: 180px; font-weight: bold; background-color: #f9fafb;">Satuan Pendidikan</td>
+        <td>${schoolName}</td>
+        <td style="width: 140px; font-weight: bold; background-color: #f9fafb;">Mata Pelajaran</td>
+        <td>${d.subject || 'Mata Pelajaran'}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; background-color: #f9fafb;">Fase / Kelas</td>
+        <td>${d.level || 'Fase D / Kelas VII'}</td>
+        <td style="font-weight: bold; background-color: #f9fafb;">Tahun Pelajaran</td>
+        <td>${d.year || '2026/2027'}</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; background-color: #f9fafb;">Topik / Materi Pokok</td>
+        <td><strong>${topic}</strong></td>
+        <td style="font-weight: bold; background-color: #f9fafb;">Alokasi Waktu</td>
+        <td><strong>${pertemuanCount * jp} JP</strong> (${pertemuanCount} Pertemuan)</td>
+      </tr>
+      <tr>
+        <td style="font-weight: bold; background-color: #f9fafb;">Target Tujuan Pembelajaran (TP)</td>
+        <td colspan="3" style="font-size: 8.5pt; color: #1f2937;">${tp}</td>
+      </tr>
+    </table>
+
+    <!-- TABEL MODUL AJAR FORMAT 1 ATHIRAH (14 BARIS TERKUNCI) -->
+    <table class="table-format1-athirah">
+      <thead>
+        <tr>
+          <th style="width: 40px;">No</th>
+          <th colspan="2" style="width: 220px;">Komponen Modul Ajar</th>
+          <th>Uraian / Deskripsi Operasional</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="text-align: center; font-weight: bold;">1</td>
+          <td colspan="2"><strong>Model Pembelajaran</strong></td>
+          <td>${model} terintegrasi pendekatan <em>Deep Learning</em></td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;">2</td>
+          <td colspan="2"><strong>Dimensi Profil Lulusan (Kurikulum Merdeka)</strong></td>
+          <td>Bernalar Kritis, Bergotong Royong, Mandiri, dan Beriman & Bertakwa kepada Tuhan YME</td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;">3</td>
+          <td colspan="2"><strong>Spiritualisasi Islam</strong></td>
+          <td>${spiritualisasi}</td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;" rowspan="4">4</td>
+          <td rowspan="4" style="width: 100px;"><strong>Desain Pembelajaran</strong></td>
+          <td style="width: 120px;">Kepemimpinan</td>
+          <td>${kepemimpinan}</td>
+        </tr>
+        <tr>
+          <td>Media & Alat</td>
+          <td>Slide presentasi interaktif, video fenomena nyata, lembar kerja eksplorasi, LCD Proyektor, Chromebook/Laptop</td>
+        </tr>
+        <tr>
+          <td>Sarana & Prasarana</td>
+          <td>Ruang kelas multimedia, jaringan internet kecepatan tinggi, buku teks referensi perpustakaan</td>
+        </tr>
+        <tr>
+          <td>Pemahaman Bermakna & Pemantik</td>
+          <td>
+            <strong>Pemahaman Bermakna:</strong> Peserta didik menyadari bahwa konsep <em>${topic}</em> memiliki keterkaitan langsung dengan pemecahan persoalan di kehidupan nyata secara berkeadaban.<br>
+            <strong>Pertanyaan Pemantik:</strong> 1. Mengapa materi ini penting kita pelajari bersama? 2. Bagaimana kita dapat mengaplikasikan pemahaman ini untuk memberi manfaat bagi masyarakat?
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;">5</td>
+          <td colspan="2"><strong>Diferensiasi Pembelajaran</strong></td>
+          <td>Diferensiasi konten dan proses berdasarkan pemetaan kesiapan belajar murid (bimbingan terfokus, penugasan reguler mandiri, dan pengayaan eksplorasi tingkat lanjut)</td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;">6</td>
+          <td colspan="2"><strong>Pengalaman Belajar (Pertemuan 1..${pertemuanCount})</strong></td>
+          <td>${meetingsHtml}</td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;" rowspan="3">7</td>
+          <td rowspan="3"><strong>Asesmen Pembelajaran</strong></td>
+          <td>Asesmen Awal</td>
+          <td>
+            Kuis apersepsi diagnostik & tanya jawab reflektif
+            <span style="float: right; font-weight: bold; color: #064e3b;">MH: 85-100 | MA: 70-84 | MR: &lt;70</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Asesmen Formatif</td>
+          <td>
+            Observasi keaktifan diskusi, lembar LKPD, dan penilaian antar rekan
+            <span style="float: right; font-weight: bold; color: #064e3b;">MH: 85-100 | MA: 70-84 | MR: &lt;70</span>
+          </td>
+        </tr>
+        <tr>
+          <td>Asesmen Sumatif</td>
+          <td>
+            Tes tertulis evaluasi capaian akhir topik dan presentasi unjuk kerja
+            <span style="float: right; font-weight: bold; color: #064e3b;">MH: 85-100 | MA: 70-84 | MR: &lt;70</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align: center; font-weight: bold;">8</td>
+          <td colspan="2"><strong>Remedial & Pengayaan</strong></td>
+          <td>
+            <strong>Remedial:</strong> Pembimbingan ulang konsep esensial secara terfokus atau melalui tutor sebaya bagi siswa yang belum tuntas.<br>
+            <strong>Pengayaan:</strong> Pemberian tugas eksploratif studi kasus kompleks dan pengaitan multidisiplin ilmu bagi siswa yang telah mencapai ketuntasan prima.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- LEMBAR PENGESAHAN TANDA TANGAN SEJAJAR -->
+    <table style="width: 100%; border: none; margin-top: 30px; font-family: Arial, sans-serif; font-size: 9pt; page-break-inside: avoid;">
+      <tr>
+        <td style="border: none; text-align: center; width: 50%; vertical-align: top;">
+          Mengetahui,<br>
+          <strong>Kepala Satuan Pendidikan</strong><br><br><br><br><br>
+          <strong><u>${d.principal || 'Kepala Satuan Pendidikan, M.Pd.'}</u></strong><br>
+          NIP. ${d.nipPrincipal || '-'}
+        </td>
+        <td style="border: none; text-align: center; width: 50%; vertical-align: top;">
+          ${d.cityDate || 'Makassar, 14 Juli 2026'}<br>
+          <strong>Guru Mata Pelajaran</strong><br><br><br><br><br>
+          <strong><u>${d.teacher || 'Guru Pengampu, S.Pd.'}</u></strong><br>
+          NIP. ${d.nipTeacher || '-'}
+        </td>
+      </tr>
+    </table>
+
+    ${lampiran017Html}
+  `;
+}
+

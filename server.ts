@@ -244,10 +244,159 @@ ATURAN FORMAT DOKUMEN HTML:
 </table>` : ''}
 `;
 
+      const docNumberIso = formData.docNumberIso || "015/F/KUR/00/IX/2025";
+      const kepemimpinan = formData.kepemimpinan || "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras";
+      const spiritualisasi = formData.spiritualisasi || "";
+      const sertakanLampiran017 = formData.sertakanLampiran017 !== false;
+
       let systemPrompt = "";
       let formatTemplate = "";
 
-      if (formatOutput === "ringkas_1lembar") {
+      if (formatOutput === "sekolah_format1_iso") {
+        // Format 1 Resmi Sekolah Islam Athirah (100% Terkunci KOP ISO 015 & 14 Baris Resmi)
+        systemPrompt = `Anda adalah Ahli Kurikulum dan Pengembang Dokumen Mutu Sekolah Islam Athirah.
+Susunlah MODUL AJAR FORMAT 1 ATHIRAH (TERKUNCI 100% KOP ISO & 14 BARIS RESMI) sesuai standar dokumen ISO Mutu No. ${docNumberIso} dan Kepka BSKAP No. 046/H/KR/2025.
+DOKUMEN HARUS MEMUAT SECARA LENGKAP DAN OPERASIONAL MURNI KODE HTML TANPA MARKDOWN:
+1. KOP FORMULIR MUTU ISO 9001 (No. Dokumen: ${docNumberIso}, Judul: ${namaSekolah}, FORMULIR - MODUL AJAR, Tgl. Terbit: 17/09/2025, No. Revisi: 00, Halaman: 1 dari 4, Kotak Kanan: ISO 9001 MUTU).
+2. TABEL IDENTITAS MODUL (Satuan Pendidikan, Mata Pelajaran, Fase/Kelas, Tahun Pelajaran, Topik Pokok, Alokasi Waktu, Target TP).
+3. TABEL FORMAT 1 KOMPONEN MODUL AJAR (14 BARIS RESMI TERKUNCI):
+   - Baris 1: Model Pembelajaran (${formData.model} terintegrasi Deep Learning).
+   - Baris 2: Dimensi Profil Lulusan Kurikulum Merdeka (Bernalar Kritis, Mandiri, Gotong Royong, Beriman & Bertakwa kepada Tuhan YME) & Karakter Khas Satuan Pendidikan.
+   - Baris 3: Spiritualisasi Islam (Wajib sertakan ayat Al-Qur'an / Hadits berbahasa Arab beserta artinya yang sangat relevan dengan topik ${formData.topik}, serta hikmah keteraturan ciptaan Allah SWT).
+   - Baris 4 (rowspan 4): Desain Pembelajaran:
+     * 4a: Kepemimpinan (${kepemimpinan})
+     * 4b: Media & Alat (Alat digital, Chromebook/Laptop, LCD, video fenomena kontekstual)
+     * 4c: Sarana & Prasarana
+     * 4d: Pemahaman Bermakna & Pertanyaan Pemantik
+   - Baris 5: Diferensiasi Pembelajaran (Diferensiasi Konten, Proses, dan Produk berdasarkan pemetaan kesiapan belajar peserta didik).
+   - Baris 6: Pengalaman Belajar Lengkap Seluruh Pertemuan (Pertemuan 1 s.d. ${formData.jumlahPertemuan}). Setiap pertemuan dijabarkan:
+     * A. Kegiatan Pendahuluan (Orientasi, Apersepsi kontekstual, Motivasi, Pengkondisian kelas).
+     * B. Kegiatan Inti (Deep Learning):
+       - Mindful Learning (Berkesadaran / Memahami)
+       - Meaningful Learning (Bermakna / Mengaplikasi)
+       - Joyful Learning (Menggembirakan / Merefleksi)
+     * C. Kegiatan Penutup (Refleksi, Simpulan bersama, Doa majelis).
+   - Baris 7 (rowspan 3): Asesmen Pembelajaran (Asesmen Awal, Formatif, Sumatif dengan teknik, bentuk instrumen, dan kriteria capaian MH [Mahir], MA [Memadai], MR [Masih Rentan]).
+   - Baris 8: Remedial & Pengayaan (Program bimbingan terfokus & penugasan eksplorasi lanjutan).
+4. LEMBAR PENGESAHAN TANDA TANGAN SEJAJAR (Mengetahui Kepala Satuan Pendidikan dan Guru Mata Pelajaran).
+${sertakanLampiran017 ? `5. FORM LAMPIRAN ASESMEN ISO 017 (No. Dokumen: 017/F/KUR/00/IX/2025): Matriks Kisi-kisi & Instrumen Asesmen 7 Kolom (Materi, Tujuan Pembelajaran, Indikator Asesmen, Jenis Asesmen, Uraian Soal Tertulis, Deskripsi Aktivitas Non-tertulis, LKPD) & LKPD Siswa Siap Pakai.` : ''}
+
+ATURAN FORMAT DOKUMEN:
+- Hasilkan MURNI KODE HTML TANPA MARKDOWN (DILARANG menggunakan \`\`\`html, \`\`\`, atau tanda pagar #).
+- Tabel menggunakan class="iso-kop-table" dan class="table-format1-athirah" dengan border 1px solid #000000.
+- Header tabel gunakan background-color: #064e3b; color: #ffffff; text-align: center; font-weight: bold;`;
+
+        formatTemplate = `
+<table class="iso-kop-table" style="width:100%; border-collapse:collapse; border:1px solid #000000; margin-bottom:12px; font-family:Arial, sans-serif;">
+  <tr>
+    <td rowspan="5" style="width:90px; text-align:center; vertical-align:middle; border:1px solid #000000; padding:6px;">
+      <div style="font-size:22px;">🌿</div>
+      <div style="font-size:7.5pt; font-weight:bold; color:#064e3b;">ATHIRAH</div>
+    </td>
+    <td colspan="4" style="text-align:center; font-size:11pt; font-weight:bold; letter-spacing:0.5px; border:1px solid #000000; padding:4px;">
+      ${namaSekolah.toUpperCase()}
+    </td>
+    <td rowspan="5" style="width:90px; text-align:center; vertical-align:middle; border:1px solid #000000; padding:6px; background-color:#f0fdf4;">
+      <div style="font-size:8pt; font-weight:bold; color:#064e3b; text-align:center; line-height:1.2;">
+        ISO 9001<br><span style="letter-spacing:1px;">MUTU</span>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="4" style="text-align:center; font-size:10pt; font-weight:bold; border:1px solid #000000; padding:4px;">
+      FORMULIR - MODUL AJAR
+    </td>
+  </tr>
+  <tr>
+    <td style="width:100px; font-weight:600; font-size:8pt; border:1px solid #000000; padding:3px 6px;">No. Dokumen</td>
+    <td style="width:170px; font-size:8pt; border:1px solid #000000; padding:3px 6px;">${docNumberIso}</td>
+    <td style="width:70px; font-weight:600; font-size:8pt; border:1px solid #000000; padding:3px 6px;">Tgl. Terbit</td>
+    <td style="font-size:8pt; border:1px solid #000000; padding:3px 6px;">17/09/2025</td>
+  </tr>
+  <tr>
+    <td style="font-weight:600; font-size:8pt; border:1px solid #000000; padding:3px 6px;">No. Revisi</td>
+    <td style="font-size:8pt; border:1px solid #000000; padding:3px 6px;">00</td>
+    <td style="font-weight:600; font-size:8pt; border:1px solid #000000; padding:3px 6px;">Halaman</td>
+    <td style="font-size:8pt; border:1px solid #000000; padding:3px 6px;">1 dari 4</td>
+  </tr>
+</table>
+
+<table class="table-format1-athirah" style="width:100%; border-collapse:collapse; border:1px solid #000000; margin-bottom:12px; font-family:Arial, sans-serif; font-size:9pt;">
+  <tr>
+    <td style="width:180px; font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Satuan Pendidikan</td>
+    <td style="border:1px solid #000000; padding:5px 7px;">${namaSekolah}</td>
+    <td style="width:140px; font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Mata Pelajaran</td>
+    <td style="border:1px solid #000000; padding:5px 7px;">${formData.mataPelajaran}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Fase / Kelas</td>
+    <td style="border:1px solid #000000; padding:5px 7px;">${formData.fase} / Kelas ${formData.kelas}</td>
+    <td style="font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Tahun Pelajaran</td>
+    <td style="border:1px solid #000000; padding:5px 7px;">${formData.tahunAjaran}</td>
+  </tr>
+  <tr>
+    <td style="font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Topik / Materi Pokok</td>
+    <td style="border:1px solid #000000; padding:5px 7px;"><strong>${formData.topik}</strong></td>
+    <td style="font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Alokasi Waktu</td>
+    <td style="border:1px solid #000000; padding:5px 7px;"><strong>${formData.waktu}</strong> (${formData.jumlahPertemuan} Pertemuan)</td>
+  </tr>
+  <tr>
+    <td style="font-weight:bold; background-color:#f9fafb; border:1px solid #000000; padding:5px 7px;">Target Tujuan Pembelajaran (TP)</td>
+    <td colspan="3" style="font-size:8.5pt; border:1px solid #000000; padding:5px 7px;">${formData.tujuan || 'Peserta didik mampu memahami dan menerapkan konsep secara mandiri dan kritis.'}</td>
+  </tr>
+</table>
+
+<table class="table-format1-athirah" style="width:100%; border-collapse:collapse; border:1px solid #000000; font-family:Arial, sans-serif; font-size:9pt; margin-bottom:14px;">
+  <thead>
+    <tr>
+      <th style="width:40px; background-color:#064e3b; color:#ffffff; padding:6px; border:1px solid #000000;">No</th>
+      <th colspan="2" style="width:220px; background-color:#064e3b; color:#ffffff; padding:6px; border:1px solid #000000;">Komponen Modul Ajar</th>
+      <th style="background-color:#064e3b; color:#ffffff; padding:6px; border:1px solid #000000;">Uraian / Deskripsi Operasional</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="text-align:center; font-weight:bold; border:1px solid #000000;">1</td><td colspan="2" style="border:1px solid #000000;"><strong>Model Pembelajaran</strong></td><td style="border:1px solid #000000;">${formData.model} terintegrasi Deep Learning</td></tr>
+    <tr><td style="text-align:center; font-weight:bold; border:1px solid #000000;">2</td><td colspan="2" style="border:1px solid #000000;"><strong>Dimensi Profil Lulusan (Kurikulum Merdeka)</strong></td><td style="border:1px solid #000000;">Bernalar Kritis, Bergotong Royong, Mandiri, Beriman & Bertakwa kepada Tuhan YME</td></tr>
+    <tr><td style="text-align:center; font-weight:bold; border:1px solid #000000;">3</td><td colspan="2" style="border:1px solid #000000;"><strong>Spiritualisasi Islam</strong></td><td style="border:1px solid #000000;">${spiritualisasi || "(Kajian ayat Al-Qur'an/Hadits dan hikmah keteraturan ciptaan Allah SWT)"}</td></tr>
+    <tr>
+      <td style="text-align:center; font-weight:bold; border:1px solid #000000;" rowspan="4">4</td>
+      <td rowspan="4" style="width:100px; border:1px solid #000000;"><strong>Desain Pembelajaran</strong></td>
+      <td style="width:120px; border:1px solid #000000;">Kepemimpinan</td>
+      <td style="border:1px solid #000000;">${kepemimpinan}</td>
+    </tr>
+    <tr><td style="border:1px solid #000000;">Media & Alat</td><td style="border:1px solid #000000;">Media presentasi interaktif, video fenomena, LKPD Eksplorasi, LCD proyektor, chromebook/laptop</td></tr>
+    <tr><td style="border:1px solid #000000;">Sarana & Prasarana</td><td style="border:1px solid #000000;">Ruang kelas kolaboratif, jaringan internet berkecepatan tinggi, buku teks perpustakaan</td></tr>
+    <tr><td style="border:1px solid #000000;">Pemahaman Bermakna & Pemantik</td><td style="border:1px solid #000000;"><strong>Bermakna:</strong> Menghubungkan konsep materi secara nyata dengan kehidupan sehari-hari.<br><strong>Pemantik:</strong> 1. Mengapa materi ini penting kita pelajari? 2. Bagaimana penerapannya bagi masyarakat?</td></tr>
+    <tr><td style="text-align:center; font-weight:bold; border:1px solid #000000;">5</td><td colspan="2" style="border:1px solid #000000;"><strong>Diferensiasi Pembelajaran</strong></td><td style="border:1px solid #000000;">Diferensiasi konten dan proses berdasarkan pemetaan kesiapan belajar siswa (bimbingan khusus, reguler, dan pengayaan)</td></tr>
+    <tr><td style="text-align:center; font-weight:bold; border:1px solid #000000;">6</td><td colspan="2" style="border:1px solid #000000;"><strong>Pengalaman Belajar (Pertemuan 1..${formData.jumlahPertemuan})</strong></td><td style="border:1px solid #000000;">(Uraikan secara detail seluruh pertemuan dari Pertemuan 1 sampai ${formData.jumlahPertemuan}. Setiap pertemuan wajib memuat Pendahuluan, Inti Deep Learning [Mindful, Meaningful, Joyful], dan Penutup secara tuntas)</td></tr>
+    <tr>
+      <td style="text-align:center; font-weight:bold; border:1px solid #000000;" rowspan="3">7</td>
+      <td rowspan="3" style="border:1px solid #000000;"><strong>Asesmen Pembelajaran</strong></td>
+      <td style="border:1px solid #000000;">Asesmen Awal</td>
+      <td style="border:1px solid #000000;">Kuis apersepsi & tanya jawab diagnostik <span style="float:right; font-weight:bold; color:#064e3b;">MH: 85-100 | MA: 70-84 | MR: &lt;70</span></td>
+    </tr>
+    <tr><td style="border:1px solid #000000;">Asesmen Formatif</td><td style="border:1px solid #000000;">Observasi keaktifan diskusi & unjuk kerja LKPD <span style="float:right; font-weight:bold; color:#064e3b;">MH: 85-100 | MA: 70-84 | MR: &lt;70</span></td></tr>
+    <tr><td style="border:1px solid #000000;">Asesmen Sumatif</td><td style="border:1px solid #000000;">Tes evaluasi tertulis akhir topik <span style="float:right; font-weight:bold; color:#064e3b;">MH: 85-100 | MA: 70-84 | MR: &lt;70</span></td></tr>
+    <tr><td style="text-align:center; font-weight:bold; border:1px solid #000000;">8</td><td colspan="2" style="border:1px solid #000000;"><strong>Remedial & Pengayaan</strong></td><td style="border:1px solid #000000;"><strong>Remedial:</strong> Bimbingan terfokus konsep esensial bagi siswa belum tuntas.<br><strong>Pengayaan:</strong> Penugasan studi kasus kompleks dan proyek eksploratif mandiri.</td></tr>
+  </tbody>
+</table>
+
+<table style="width:100%; border:none; margin-top:30px; font-family:Arial, sans-serif; font-size:9pt; page-break-inside:avoid;">
+  <tr>
+    <td style="border:none; text-align:center; width:50%; vertical-align:top;">
+      Mengetahui,<br><strong>Kepala Satuan Pendidikan</strong><br><br><br><br><br>
+      <strong><u>${namaKepsek}</u></strong><br>
+      NIP. ${nipKepsek}
+    </td>
+    <td style="border:none; text-align:center; width:50%; vertical-align:top;">
+      ${tempatTtd}, ${tanggalTtd}<br><strong>Guru Mata Pelajaran</strong><br><br><br><br><br>
+      <strong><u>${namaGuru}</u></strong><br>
+      NIP. ${nipGuru}
+    </td>
+  </tr>
+</table>
+`;
+      } else if (formatOutput === "ringkas_1lembar") {
         // Format Ringkas 1-2 Lembar (Esensial)
         systemPrompt = `Anda adalah Ahli Kurikulum Nasional Indonesia. Buatkan RPP / MODUL AJAR FORMAT RINGKAS ESENSIAL (1-2 Halaman Praktis) yang padat, aplikatif, dan terstruktur sesuai regulasi penyederhanaan RPP Kemendikbudristek.
 Fokus pada 3 Komponen Inti Utama:
@@ -630,10 +779,14 @@ ${formatTemplate}`;
           .trim();
       } catch (aiErr: any) {
         console.warn("Notice: Gemini API notice on generate-modul, activating standard engine:", aiErr?.message || aiErr);
-        text = buildKbcFallbackDocument("modul_ajar", {
+        const fallbackDocType = formatOutput === "sekolah_format1_iso" ? "sekolah_format1_iso" : "modul_ajar";
+        text = buildKbcFallbackDocument(fallbackDocType, {
           schoolName: namaSekolah,
           teacher: namaGuru,
           nipTeacher: nipGuru,
+          principal: namaKepsek,
+          nipPrincipal: nipKepsek,
+          cityDate: `${tempatTtd}, ${tanggalTtd}`,
           subject: formData.mataPelajaran || "Umum",
           level: `Fase ${formData.fase || 'D'} / Kelas ${formData.kelas || 'VII'}`,
           year: formData.tahunAjaran || "2026/2027",
@@ -641,17 +794,24 @@ ${formatTemplate}`;
           jumlahPertemuan: formData.jumlahPertemuan || "2",
           jpPerPertemuan: "2",
           topikLokal: formData.topik || "Topik Pembelajaran",
-          rumusanTp: formData.tujuan || "Peserta didik dapat menganalisis dan menerapkan konsep materi secara kritis, mandiri, dan bermakna."
+          rumusanTp: formData.tujuan || "Peserta didik dapat menganalisis dan menerapkan konsep materi secara kritis, mandiri, dan bermakna.",
+          docNumberIso: docNumberIso,
+          kepemimpinan: kepemimpinan,
+          spiritualisasi: spiritualisasi,
+          sertakanLampiran017: sertakanLampiran017,
+          sertakanLkpd: sertakanLkpd
         });
       }
 
       res.json({ status: "success", html: text });
     } catch (error: any) {
       console.warn("Fallback notice in generate-modul:", error?.message || error);
-      const fallbackHtml = buildKbcFallbackDocument("modul_ajar", {
+      const reqFormat = req.body?.formatOutput === "sekolah_format1_iso" ? "sekolah_format1_iso" : "modul_ajar";
+      const fallbackHtml = buildKbcFallbackDocument(reqFormat, {
         schoolName: req.body?.namaSekolah || "Sekolah",
         teacher: req.body?.namaGuru || "Guru Pengampu",
-        subject: req.body?.mataPelajaran || "Mata Pelajaran"
+        subject: req.body?.mataPelajaran || "Mata Pelajaran",
+        docNumberIso: req.body?.docNumberIso || "015/F/KUR/00/IX/2025"
       });
       res.json({ status: "success", html: fallbackHtml });
     }

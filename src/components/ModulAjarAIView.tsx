@@ -53,11 +53,15 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
     jumlahPertemuan: "2",
     model: "Problem Based Learning (PBL)",
     tujuan: "",
-    karakteristik: "Siswa aktif, heterogen, senang dengan pemecahan masalah kontekstual dan diskusi kelompok.",
     formatOutput: "standar_merdeka",
+    templateCategory: "bawaan",
+    docNumberIso: "015/F/KUR/00/IX/2025",
+    kepemimpinan: "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras",
+    spiritualisasi: "",
     sertakanKop: true,
     sertakanTtd: true,
     sertakanLkpd: true,
+    sertakanLampiran017: true,
   });
 
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
@@ -209,6 +213,14 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
             tr { page-break-inside: avoid !important; break-inside: avoid !important; }
             th { border: 1pt solid #1a3a5c; padding: 6pt 8pt; vertical-align: middle; text-align: center; font-size: 10pt; font-weight: bold; background-color: #1a3a5c !important; color: #ffffff !important; }
             td { border: 1pt solid #cbd5e1; padding: 6pt 8pt; vertical-align: top; text-align: left; font-size: 10pt; color: #000000 !important; background-color: #ffffff !important; }
+            .iso-kop-table { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; }
+            .iso-kop-table td { border: 1pt solid #000000 !important; padding: 4pt 6pt !important; font-size: 8pt !important; vertical-align: middle !important; }
+            .table-format1-athirah { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; font-size: 9pt !important; }
+            .table-format1-athirah th { border: 1pt solid #000000 !important; padding: 5pt 7pt !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: bold !important; text-align: center !important; font-size: 9.5pt !important; }
+            .table-format1-athirah td { border: 1pt solid #000000 !important; padding: 5pt 7pt !important; vertical-align: top !important; font-size: 9pt !important; }
+            .table-asesmen-017 { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; font-size: 8.5pt !important; }
+            .table-asesmen-017 th { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: bold !important; text-align: center !important; }
+            .table-asesmen-017 td { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; vertical-align: top !important; font-size: 8.5pt !important; }
             ul, ol { margin-bottom: 6pt; padding-left: 18pt; }
             li { margin-bottom: 3pt; color: #000000; }
           </style>
@@ -262,6 +274,14 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
             tr { page-break-inside: avoid !important; break-inside: avoid !important; }
             th { border: 1px solid #1a3a5c !important; padding: 6px 8px; vertical-align: middle; text-align: center; font-size: 10pt; font-weight: bold; background-color: #1a3a5c !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             td { border: 1px solid #cbd5e1 !important; padding: 6px 8px; vertical-align: top; text-align: left; font-size: 10pt; color: #000000 !important; background-color: #ffffff !important; }
+            .iso-kop-table { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000000 !important; margin-bottom: 12px !important; }
+            .iso-kop-table td { border: 1px solid #000000 !important; padding: 4px 6px !important; font-size: 8pt !important; vertical-align: middle !important; }
+            .table-format1-athirah { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000000 !important; margin-bottom: 14px !important; font-size: 9pt !important; }
+            .table-format1-athirah th { border: 1px solid #000000 !important; padding: 6px 8px !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: 700 !important; text-align: center !important; font-size: 9.5pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .table-format1-athirah td { border: 1px solid #000000 !important; padding: 5px 7px !important; vertical-align: top !important; line-height: 1.25 !important; font-size: 9pt !important; }
+            .table-asesmen-017 { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000000 !important; margin-bottom: 14px !important; font-size: 8.5pt !important; }
+            .table-asesmen-017 th { border: 1px solid #000000 !important; padding: 5px 6px !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: 700 !important; text-align: center !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .table-asesmen-017 td { border: 1px solid #000000 !important; padding: 5px 6px !important; vertical-align: top !important; font-size: 8.5pt !important; }
             ul, ol { margin-bottom: 6px; padding-left: 18px; }
             li { margin-bottom: 2px; color: #000000; }
             @media print {
@@ -289,6 +309,8 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
 
   const getFormatBadgeLabel = (format?: string) => {
     switch (format) {
+      case "sekolah_format1_iso":
+        return "Template Sekolah: Format 1 Athirah (Standar ISO 015 & 14 Baris Terkunci)";
       case "standar_merdeka":
         return "Standar Kurikulum Merdeka (Lengkap & Resmi)";
       case "deep_learning":
@@ -384,39 +406,179 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
           {/* STEP 1: IDENTITAS & FORMAT KURIKULUM */}
           {activeStep === 1 && (
             <div className="space-y-4">
-              {/* Section: PILIHAN FORMAT OUTPUT */}
-              <div className="space-y-3 p-3.5 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60">
-                <label className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-wider flex items-center gap-1.5 font-display">
-                  <FileCheck className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
-                  Format Output Kurikulum *
-                </label>
-
-                <select
-                  id="formatOutput"
-                  value={form.formatOutput}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 text-xs font-bold border rounded-lg bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-cyan-200 outline-none focus:ring-2 focus:ring-cyan-500 font-sans"
-                >
-                  <option value="standar_merdeka">1. Standar Kurikulum Merdeka (Lengkap & Resmi)</option>
-                  <option value="deep_learning">2. Deep Learning Pro (Mindful, Meaningful, Joyful)</option>
-                  <option value="ringkas_1lembar">3. Format Ringkas Esensial (1-2 Lembar Praktis)</option>
-                  <option value="kemenag_kbc">4. Integrasi Kemenag / KBC (PPRA & Karakter)</option>
-                </select>
-
-                <div className="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-900">
-                  {form.formatOutput === "standar_merdeka" && (
-                    <span>Format lengkap Kemdikbudristek: I. Informasi Umum, II. Komponen Inti (Tujuan, Pemahaman Bermakna, Pertanyaan Pemantik, Kegiatan Per Pertemuan, Asesmen), III. Lampiran LKPD & Glosarium.</span>
-                  )}
-                  {form.formatOutput === "deep_learning" && (
-                    <span>Berfokus pada 3 Dimensi Deep Learning: Mindful (Sadar/Fokus), Meaningful (Bermakna), Joyful (Menggembirakan) dalam 3 Fase: Memahami, Mengaplikasi, dan Merefleksi.</span>
-                  )}
-                  {form.formatOutput === "ringkas_1lembar" && (
-                    <span>Format padat praktis 1-2 lembar (RPP Esensial): 3 Komponen Inti (Tujuan, Langkah-Langkah Pembelajaran, dan Asesmen) untuk supervisi kilat.</span>
-                  )}
-                  {form.formatOutput === "kemenag_kbc" && (
-                    <span>Terintegrasi nilai Kementerian Agama: Panca Cinta dan 10 Nilai Profil Pelajar Rahmatan lil 'Alamin (PPRA: Ta'addub, Qudwah, Tawassuth).</span>
-                  )}
+              {/* Section: PILIHAN TEMPLATE MODUL AJAR (2 PILIHAN UTAMA: BAWAAN & SEKOLAH) */}
+              <div className="space-y-3.5 p-4 bg-gradient-to-br from-indigo-50/80 via-slate-50 to-emerald-50/50 dark:from-indigo-950/40 dark:via-slate-900/40 dark:to-emerald-950/30 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 uppercase tracking-wider flex items-center gap-1.5 font-display">
+                    <FileCheck className="w-4 h-4 text-indigo-600 dark:text-cyan-400" />
+                    Pilihan Template Modul Ajar *
+                  </label>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-cyan-300 font-semibold border border-indigo-200 dark:border-indigo-700/60">
+                    2 Opsi Template
+                  </span>
                 </div>
+
+                {/* 2 Big Choice Cards: Template Bawaan vs Template Sekolah */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Option 1: Template Bawaan */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        templateCategory: "bawaan",
+                        formatOutput: prev.formatOutput === "sekolah_format1_iso" ? "standar_merdeka" : prev.formatOutput
+                      }));
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                      form.templateCategory !== "sekolah" && form.formatOutput !== "sekolah_format1_iso"
+                        ? "bg-white dark:bg-slate-900 border-cyan-500 ring-2 ring-cyan-500/30 shadow-md"
+                        : "bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-cyan-400/50"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          Standar Nasional
+                        </span>
+                        {form.templateCategory !== "sekolah" && form.formatOutput !== "sekolah_format1_iso" && (
+                          <CheckCircle2 className="w-4 h-4 text-cyan-500 shrink-0" />
+                        )}
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-snug">
+                        1. Template Bawaan
+                      </h4>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Format standar Kemdikbudristek, Deep Learning Pro, Ringkas 1-2 Lembar, & Kemenag/KBC.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Option 2: Template Sekolah Saya (Sekolah Islam Athirah) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm(prev => ({
+                        ...prev,
+                        templateCategory: "sekolah",
+                        formatOutput: "sekolah_format1_iso",
+                        docNumberIso: prev.docNumberIso || "015/F/KUR/00/IX/2025",
+                        kepemimpinan: prev.kepemimpinan || "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras"
+                      }));
+                    }}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                      form.templateCategory === "sekolah" || form.formatOutput === "sekolah_format1_iso"
+                        ? "bg-white dark:bg-slate-900 border-emerald-500 ring-2 ring-emerald-500/30 shadow-md"
+                        : "bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-emerald-400/50"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          ISO 015 &bull; 14 Baris
+                        </span>
+                        {(form.templateCategory === "sekolah" || form.formatOutput === "sekolah_format1_iso") && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        )}
+                      </div>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-snug flex items-center gap-1.5">
+                        <span>2. Template Sekolah Saya</span>
+                      </h4>
+                      <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Format 1 Resmi ISO No. 015 & 14 Baris Terkunci (Sekolah Islam Athirah - Deep Learning Mindful, Meaningful, Joyful).
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* SUB-OPTIONS JIKA PILIH TEMPLATE BAWAAN */}
+                {form.formatOutput !== "sekolah_format1_iso" && (
+                  <div className="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/40 space-y-2">
+                    <label className="text-[10.5px] font-semibold text-slate-700 dark:text-slate-300">
+                      Varian Template Bawaan:
+                    </label>
+                    <select
+                      id="formatOutput"
+                      value={form.formatOutput}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 text-xs font-bold border rounded-lg bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-cyan-200 outline-none focus:ring-2 focus:ring-cyan-500 font-sans"
+                    >
+                      <option value="standar_merdeka">1. Standar Kurikulum Merdeka (Lengkap & Resmi Kemendikbud)</option>
+                      <option value="deep_learning">2. Deep Learning Pro (Mindful, Meaningful, Joyful)</option>
+                      <option value="ringkas_1lembar">3. Format Ringkas Esensial (1-2 Lembar Praktis)</option>
+                      <option value="kemenag_kbc">4. Integrasi Kemenag / KBC (PPRA & Karakter)</option>
+                    </select>
+
+                    <div className="text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug bg-white/70 dark:bg-slate-900/60 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-900">
+                      {form.formatOutput === "standar_merdeka" && (
+                        <span>Format lengkap Kemdikbudristek: I. Informasi Umum, II. Komponen Inti (Tujuan, Pemahaman Bermakna, Pertanyaan Pemantik, Kegiatan Per Pertemuan, Asesmen), III. Lampiran LKPD & Glosarium.</span>
+                      )}
+                      {form.formatOutput === "deep_learning" && (
+                        <span>Berfokus pada 3 Dimensi Deep Learning: Mindful (Sadar/Fokus), Meaningful (Bermakna), Joyful (Menggembirakan) dalam 3 Fase: Memahami, Mengaplikasi, dan Merefleksi.</span>
+                      )}
+                      {form.formatOutput === "ringkas_1lembar" && (
+                        <span>Format padat praktis 1-2 lembar (RPP Esensial): 3 Komponen Inti (Tujuan, Langkah-Langkah Pembelajaran, dan Asesmen) untuk supervisi kilat.</span>
+                      )}
+                      {form.formatOutput === "kemenag_kbc" && (
+                        <span>Terintegrasi nilai Kementerian Agama: Panca Cinta dan 10 Nilai Profil Pelajar Rahmatan lil 'Alamin (PPRA: Ta'addub, Qudwah, Tawassuth).</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* PENGATURAN KHUSUS JIKA PILIH TEMPLATE SEKOLAH (ISO 015 & 14 BARIS) */}
+                {form.formatOutput === "sekolah_format1_iso" && (
+                  <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 space-y-3">
+                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-2.5 rounded-lg text-[10.5px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                      <strong>Standar Format Terkunci 100%:</strong> KOP Formulir ISO Mutu No. Dokumen: <code>015/F/KUR/00/IX/2025</code>, Tabel Identitas Lengkap, dan 14 Baris Resmi (Model Pembelajaran, Dimensi Profil Athirah, Spiritualisasi Islam, Desain Pembelajaran [Kepemimpinan, Media, Sarpras, Pemantik], Diferensiasi, Pengalaman Belajar Mindful-Meaningful-Joyful per Pertemuan, Asesmen MH-MA-MR, Remedial & Pengayaan, serta Lembar Pengesahan).
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 pt-1">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                          No. Dokumen ISO Mutu
+                        </label>
+                        <input
+                          type="text"
+                          id="docNumberIso"
+                          value={form.docNumberIso || "015/F/KUR/00/IX/2025"}
+                          onChange={handleChange}
+                          className="w-full px-2.5 py-1.5 text-xs font-mono border rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="015/F/KUR/00/IX/2025"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                          Fokus Kepemimpinan & Karakter Khas Sekolah
+                        </label>
+                        <input
+                          type="text"
+                          id="kepemimpinan"
+                          value={form.kepemimpinan || "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras"}
+                          onChange={handleChange}
+                          className="w-full px-2.5 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Kalla Core Values & Kepemimpinan..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1">
+                          Spiritualisasi Islam Khusus (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          id="spiritualisasi"
+                          value={form.spiritualisasi || ""}
+                          onChange={handleChange}
+                          className="w-full px-2.5 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Biarkan kosong untuk ayat/hadits otomatis sesuai topik"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Checkbox Options */}
                 <div className="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/40 space-y-2">
@@ -427,7 +589,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       onChange={(e) => setForm(prev => ({ ...prev, sertakanKop: e.target.checked }))}
                       className="rounded text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5"
                     />
-                    <span>Sertakan Kop Satuan Pendidikan Resmi</span>
+                    <span>Sertakan Kop Satuan Pendidikan / ISO Resmi</span>
                   </label>
 
                   <label className="flex items-center space-x-2 text-xs text-slate-700 dark:text-slate-300 font-medium cursor-pointer">
@@ -449,6 +611,18 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                     />
                     <span>Sertakan Lembar LKPD & Rubrik Asesmen Lengkap</span>
                   </label>
+
+                  {form.formatOutput === "sekolah_format1_iso" && (
+                    <label className="flex items-center space-x-2 text-xs text-emerald-800 dark:text-emerald-300 font-medium cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.sertakanLampiran017 !== false}
+                        onChange={(e) => setForm(prev => ({ ...prev, sertakanLampiran017: e.target.checked }))}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                      />
+                      <span>Sertakan Form Lampiran Asesmen ISO 017 (Matriks 7 Kolom)</span>
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -778,8 +952,10 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
               {/* Summary Parameter HUD */}
               <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-white/10 space-y-2 text-xs">
                 <div className="flex justify-between items-center py-1 border-b border-slate-200 dark:border-white/5">
-                  <span className="text-slate-500 font-mono text-[10px]">FORMAT</span>
-                  <span className="font-bold text-cyan-500 dark:text-cyan-300">{form.formatOutput}</span>
+                  <span className="text-slate-500 font-mono text-[10px]">TEMPLATE</span>
+                  <span className="font-bold text-cyan-500 dark:text-cyan-300 text-right text-[11px]">
+                    {form.formatOutput === "sekolah_format1_iso" ? "Sekolah Saya: Format 1 ISO 015 Athirah" : getFormatBadgeLabel(form.formatOutput)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-slate-200 dark:border-white/5">
                   <span className="text-slate-500 font-mono text-[10px]">MAPEL / KELAS</span>
@@ -901,24 +1077,16 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                 Lembar Modul Ajar Siap Disusun
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-5">
-                Pilih format dokumen dan skenario pembelajaran di panel sebelah kiri, lalu tekan tombol <b>GENERATE MODUL AJAR</b>.
+                Tersedia 2 pilihan template: <b>Template Bawaan Nasional</b> atau <b>Template Sekolah Saya (Format 1 ISO 015 & 14 Baris Terkunci Athirah)</b>.
               </p>
               <div className="grid grid-cols-2 gap-2 text-left max-w-md w-full text-[11px]">
                 <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10">
-                  <span className="font-bold text-cyan-600 dark:text-cyan-400 block mb-0.5">✓ Standar Merdeka</span>
-                  Lengkap dengan Kop, Komponen Inti, LKPD & TTD
+                  <span className="font-bold text-cyan-600 dark:text-cyan-400 block mb-0.5">✓ 1. Template Bawaan</span>
+                  Standar Merdeka, Deep Learning Pro, Ringkas, & Kemenag/KBC
                 </div>
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10">
-                  <span className="font-bold text-purple-600 dark:text-purple-400 block mb-0.5">✓ Deep Learning</span>
-                  3 Dimensi: Mindful, Meaningful, & Joyful
-                </div>
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10">
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">✓ Ringkas 1-2 Lembar</span>
-                  Praktis & esensial untuk supervisi cepat
-                </div>
-                <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10">
-                  <span className="font-bold text-amber-600 dark:text-amber-400 block mb-0.5">✓ Integrasi Kemenag</span>
-                  Panca Cinta & 10 Nilai Karakter PPRA
+                <div className="p-3 rounded-xl bg-white dark:bg-slate-900/80 border border-emerald-300 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20">
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-0.5">✓ 2. Template Sekolah Saya</span>
+                  Format 1 Resmi ISO 015 & 14 Baris Terkunci Athirah
                 </div>
               </div>
             </div>

@@ -123,10 +123,15 @@ export interface ModulFormState {
   metode?: string;
   tujuan: string;
   karakteristik: string;
-  formatOutput?: "standar_merdeka" | "deep_learning" | "ringkas_1lembar" | "kemenag_kbc";
+  formatOutput?: "standar_merdeka" | "deep_learning" | "ringkas_1lembar" | "kemenag_kbc" | "sekolah_format1_iso";
+  templateCategory?: "bawaan" | "sekolah";
+  docNumberIso?: string;
+  kepemimpinan?: string;
+  spiritualisasi?: string;
   sertakanKop?: boolean;
   sertakanTtd?: boolean;
   sertakanLkpd?: boolean;
+  sertakanLampiran017?: boolean;
 }
 
 export interface ChatMessage {

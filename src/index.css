@@ -278,3 +278,82 @@
     padding: 6px 8px !important;
   }
 }
+
+/* ==============================================================================
+   STANDAR FORMULIR ISO 015 & TABEL FORMAT 1 SEKOLAH ISLAM ATHIRAH
+   ============================================================================== */
+.iso-kop-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1px solid #000000 !important;
+  margin-bottom: 12px !important;
+  font-family: Arial, sans-serif !important;
+}
+
+.iso-kop-table td {
+  border: 1px solid #000000 !important;
+  padding: 4px 6px !important;
+  font-size: 8pt !important;
+  vertical-align: middle !important;
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+.table-format1-athirah {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1px solid #000000 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 9pt !important;
+  margin-bottom: 14px !important;
+}
+
+.table-format1-athirah th {
+  border: 1px solid #000000 !important;
+  padding: 6px 8px !important;
+  background-color: #064e3b !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  font-size: 9.5pt !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.table-format1-athirah td {
+  border: 1px solid #000000 !important;
+  padding: 5px 7px !important;
+  vertical-align: top !important;
+  line-height: 1.25 !important;
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+.table-asesmen-017 {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  border: 1px solid #000000 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 8.5pt !important;
+  margin-bottom: 14px !important;
+}
+
+.table-asesmen-017 th {
+  border: 1px solid #000000 !important;
+  padding: 5px 6px !important;
+  background-color: #064e3b !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+.table-asesmen-017 td {
+  border: 1px solid #000000 !important;
+  padding: 5px 6px !important;
+  vertical-align: top !important;
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
