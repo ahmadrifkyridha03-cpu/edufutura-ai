@@ -1909,10 +1909,24 @@ export async function startServer() {
   return app;
 }
 
-// Auto start when not in Vercel serverless environment
-if (process.env.VERCEL !== "1") {
+// Auto start only when this file is directly executed (node server.ts or tsx server.ts)
+// and never in Vercel / serverless runtime
+const isServerless = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ENV ||
+  process.env.NOW_REGION ||
+  process.env.AWS_LAMBDA_FUNCTION_NAME ||
+  process.env.LAMBDA_TASK_ROOT
+);
+
+const isDirectExecution = Boolean(
+  process.argv[1]?.endsWith("server.ts") ||
+  process.argv[1]?.endsWith("server.cjs") ||
+  process.argv[1]?.endsWith("server.js")
+);
+
+if (!isServerless && isDirectExecution) {
   startServer().catch((err) => {
     console.error("Failed to start server:", err);
-    process.exit(1);
   });
 }
