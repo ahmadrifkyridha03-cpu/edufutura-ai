@@ -23,7 +23,7 @@ export function createApiApp() {
       req.url = req.url.replace("/api/index/", "/api/");
     } else if (req.url.startsWith("/index/")) {
       req.url = req.url.replace("/index/", "/api/");
-    } else if (req.url === "/api/index" || req.url === "/index") {
+    } else if (req.url === "/api/index" || req.url === "/index" || req.url === "/api/index.js" || req.url.startsWith("/api/index.js")) {
       req.url = req.originalUrl || req.url;
     }
     next();
