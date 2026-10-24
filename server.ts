@@ -8,10 +8,8 @@ import { buildKbcFallbackDocument } from "./serverKbcBuilder";
 
 dotenv.config();
 
-async function startServer() {
+export function createApiApp() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
-
   app.use(express.json({ limit: "10mb" }));
 
   // Initialize Gemini AI Client lazily or safely
@@ -1614,8 +1612,16 @@ Layout: A4 Landscape (@media print { @page { size: A4 landscape; margin: 1.0cm; 
     }
   });
 
+  return app;
+}
+
+export async function startServer() {
+  const app = createApiApp();
+  const PORT = Number(process.env.PORT) || 3000;
+
   // Vite middleware setup
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1632,9 +1638,14 @@ Layout: A4 Landscape (@media print { @page { size: A4 landscape; margin: 1.0cm; 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server EdAdmin Pro running on http://0.0.0.0:${PORT}`);
   });
+
+  return app;
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start server:", err);
-  process.exit(1);
-});
+// Auto start when not in Vercel serverless environment
+if (process.env.VERCEL !== "1") {
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+    process.exit(1);
+  });
+}
