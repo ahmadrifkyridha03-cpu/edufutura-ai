@@ -40,6 +40,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
         }),
       });
 
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("Gagal terhubung ke server autentikasi (respons non-JSON). Silakan periksa koneksi.");
+      }
+
       const data = await response.json();
 
       if (response.ok && data.status === "success") {

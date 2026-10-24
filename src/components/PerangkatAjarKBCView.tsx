@@ -206,6 +206,15 @@ Peserta didik mampu menerapkan adab islami terhadap orang tua, guru, sesama manu
         })
       });
 
+      const contentType = res.headers.get("content-type") || "";
+      if (!res.ok || !contentType.includes("application/json")) {
+        throw new Error(
+          res.status === 504
+            ? "Waktu pembuatan dokumen melebihi batas (server timeout). Silakan coba sesaat lagi."
+            : "Server sedang sibuk. Silakan coba beberapa saat lagi."
+        );
+      }
+
       const data = await res.json();
       if (data.status === "success" && data.html) {
         const cleanedHtml = sanitizeHtmlForOutput(data.html);

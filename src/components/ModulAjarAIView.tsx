@@ -155,6 +155,15 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
         body: JSON.stringify(form)
       });
 
+      const contentType = res.headers.get("content-type") || "";
+      if (!res.ok || !contentType.includes("application/json")) {
+        throw new Error(
+          res.status === 504
+            ? "Waktu pembuatan modul ajar melebihi batas (server timeout). Silakan coba sesaat lagi."
+            : "Server sedang sibuk. Silakan coba beberapa saat lagi."
+        );
+      }
+
       const data = await res.json();
       if (data.status === "success" && data.html) {
         const cleaned = cleanHtmlContent(data.html);

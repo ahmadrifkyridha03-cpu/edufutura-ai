@@ -1,10 +1,10 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import firebaseConfigData from "./firebase-applet-config.json";
 import { buildKbcFallbackDocument } from "./serverKbcBuilder";
+import { buildKurikulumMerdekaDocument } from "./src/utils/kurikulumMerdekaBuilder";
 
 dotenv.config();
 
@@ -30,11 +30,17 @@ export function createApiApp() {
 
   // Helper for resilient Gemini API calls with model fallback and exponential retry
   const generateContentWithRetry = async (ai: GoogleGenAI, contents: any) => {
-    const modelCandidates = ["gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+    const modelCandidates = [
+      "gemini-3.8-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash"
+    ];
     let lastError: any = null;
 
     for (const modelCandidate of modelCandidates) {
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const response = await ai.models.generateContent({
             model: modelCandidate,
@@ -59,6 +65,17 @@ export function createApiApp() {
             throw err;
           }
 
+          // If model is not found (404), break immediately to try next candidate
+          const isModelNotFound =
+            status === 404 ||
+            errMsg.includes("404") ||
+            errMsg.includes("not found") ||
+            errMsg.includes("is not supported");
+
+          if (isModelNotFound) {
+            break;
+          }
+
           const isTransient =
             status === 503 ||
             status === 429 ||
@@ -77,21 +94,18 @@ export function createApiApp() {
           if (isTransient) {
             if (isQuota) {
               if (attempt === 0) {
-                // Short wait on first quota hit as RPM resets quickly (e.g. 1.5s - 2s)
-                await new Promise((resolve) => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 1500));
               } else {
-                // On repeated quota hits, move to next model candidate
                 break;
               }
-            } else if (attempt < 2) {
-              // Wait 1s, 2s before retrying same candidate for transient network/server errors
-              await new Promise((resolve) => setTimeout(resolve, (attempt + 1) * 1000));
+            } else if (attempt < 1) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             } else {
               break;
             }
           } else {
-            // Non-transient error, rethrow immediately
-            throw err;
+            // Try next candidate for other errors
+            break;
           }
         }
       }
@@ -763,8 +777,14 @@ ${formatTemplate}`;
 
       let text = "";
       try {
-        const response = await generateContentWithRetry(ai, [
-          { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AI generation timed out after 25s")), 25000)
+        );
+        const response: any = await Promise.race([
+          generateContentWithRetry(ai, [
+            { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+          ]),
+          timeoutPromise
         ]);
 
         text = response.text || "";
@@ -834,11 +854,17 @@ Tugas Anda membantu guru dalam:
 Berikan jawaban yang ramah, sopan, terstruktur, berbasis Kurikulum Merdeka / Nasional, mudah dipahami, dan langsung dapat dipraktikkan guru.
 Informasi Sekolah/Guru Pendukung: ${JSON.stringify(context || {})}`;
 
-      const response = await generateContentWithRetry(ai, [
-        { role: "user", parts: [{ text: `${systemPrompt}\n\nPertanyaan/Permintaan Guru:\n${message}` }] }
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("AI generation timed out after 20s")), 20000)
+      );
+      const response: any = await Promise.race([
+        generateContentWithRetry(ai, [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\nPertanyaan/Permintaan Guru:\n${message}` }] }
+        ]),
+        timeoutPromise
       ]);
 
-      const rawText = response.text || "Maaf, saya tidak dapat merespons saat ini.";
+      const rawText = response?.text || "Maaf, saya tidak dapat merespons saat ini.";
       const cleanReply = rawText
         .replace(/```[a-zA-Z]*\n?/g, "")
         .replace(/```/g, "")
@@ -1405,19 +1431,26 @@ KETENTUAN LAYOUT HTML:
       let htmlOutput = "";
       try {
         const contents = [{ role: "user", parts: [{ text: docPrompt }] }];
-        const response = await generateContentWithRetry(ai, contents);
+        // Set a 25-second timeout race so Vercel or cloud gateway does not kill the function with 504
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AI generation timed out after 25s")), 25000)
+        );
+        const response: any = await Promise.race([
+          generateContentWithRetry(ai, contents),
+          timeoutPromise
+        ]);
 
         htmlOutput = response?.text || "";
         htmlOutput = htmlOutput.replace(/^```html\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
       } catch (aiErr: any) {
         console.warn("Notice: Gemini API returned notice on Perangkat Ajar, compiling standard document:", aiErr?.message || aiErr);
-        htmlOutput = buildKbcFallbackDocument(docType, formData);
+        htmlOutput = buildKurikulumMerdekaDocument(docType, formData);
         return res.json({
           status: "success",
           html: htmlOutput,
           docType,
           isFallback: true,
-          note: "Dokumen berhasil disusun otomatis sesuai format standar Kurikulum Merdeka."
+          note: "Dokumen berhasil disusun otomatis sesuai format standar Kurikulum Merdeka Kemendikbudristek."
         });
       }
 
@@ -1425,13 +1458,13 @@ KETENTUAN LAYOUT HTML:
     } catch (err: any) {
       console.warn("Fallback notice on Perangkat Ajar AI:", err?.message || err);
       try {
-        const fallbackHtml = buildKbcFallbackDocument(req.body?.docType, req.body?.formData);
+        const fallbackHtml = buildKurikulumMerdekaDocument(req.body?.docType, req.body?.formData);
         return res.json({
           status: "success",
           html: fallbackHtml,
           docType: req.body?.docType,
           isFallback: true,
-          note: "Dokumen berhasil disusun otomatis sesuai format standar Kurikulum Merdeka."
+          note: "Dokumen berhasil disusun otomatis sesuai format standar Kurikulum Merdeka Kemendikbudristek."
         });
       } catch (fallbackErr: any) {
         res.status(500).json({
@@ -1802,7 +1835,14 @@ Layout: A4 Landscape (@media print { @page { size: A4 landscape; margin: 1.0cm; 
       let htmlOutput = "";
       try {
         const contents = [{ role: "user", parts: [{ text: docPrompt }] }];
-        const response = await generateContentWithRetry(ai, contents);
+        // Set a 25-second timeout race so Vercel or cloud gateway does not kill the function with 504
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("AI generation timed out after 25s")), 25000)
+        );
+        const response: any = await Promise.race([
+          generateContentWithRetry(ai, contents),
+          timeoutPromise
+        ]);
 
         htmlOutput = response?.text || "";
         htmlOutput = htmlOutput.replace(/^```html\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();

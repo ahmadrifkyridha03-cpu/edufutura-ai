@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Pengaturan, RmeMonthItem, AgendaSekolahItem } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
+import { buildKurikulumMerdekaDocument } from "../utils/kurikulumMerdekaBuilder";
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
@@ -536,29 +537,59 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
     setGeneratingProgress(`Menyusun ${docMeta?.fullTitle || targetType}...`);
 
     try {
-      const res = await fetch("/api/ai/generate-perangkat-ajar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          docType: targetType,
-          formData: getPayloadFormData()
-        })
-      });
+      const payloadFormData = getPayloadFormData();
+      let cleanedHtml = "";
+      let isFallbackUsed = false;
 
-      const data = await res.json();
-      if (data.status === "success" && data.html) {
-        const cleanedHtml = sanitizeHtmlForOutput(data.html);
+      // Special case: instant local RME
+      if (targetType === "rme") {
+        cleanedHtml = sanitizeHtmlForOutput(buildInstantRmeHtml());
+      } else {
+        try {
+          const res = await fetch("/api/ai/generate-perangkat-ajar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              docType: targetType,
+              formData: payloadFormData
+            })
+          });
+
+          const contentType = res.headers.get("content-type") || "";
+          if (res.ok && contentType.includes("application/json")) {
+            const data = await res.json();
+            if (data.status === "success" && data.html) {
+              cleanedHtml = sanitizeHtmlForOutput(data.html);
+              if (data.isFallback) isFallbackUsed = true;
+            } else {
+              throw new Error(data.message || "Gagal menghasilkan dokumen dari AI");
+            }
+          } else {
+            console.warn("Backend API returned non-JSON / timeout response, activating instant Kurikulum Merdeka builder");
+            cleanedHtml = sanitizeHtmlForOutput(buildKurikulumMerdekaDocument(targetType, payloadFormData));
+            isFallbackUsed = true;
+          }
+        } catch (fetchErr: any) {
+          console.warn("API call failed or timed out, compiling Kurikulum Merdeka document directly:", fetchErr?.message);
+          cleanedHtml = sanitizeHtmlForOutput(buildKurikulumMerdekaDocument(targetType, payloadFormData));
+          isFallbackUsed = true;
+        }
+      }
+
+      if (cleanedHtml) {
         setGeneratedDocs((prev) => ({
           ...prev,
           [targetType]: cleanedHtml
         }));
-        notifySimpanSuccess(`${docMeta?.fullTitle || "Dokumen"} berhasil dibuat!`);
-      } else {
-        throw new Error(data.message || "Gagal menghasilkan dokumen");
+        notifySimpanSuccess(
+          isFallbackUsed
+            ? `${docMeta?.fullTitle || "Dokumen"} berhasil disusun otomatis sesuai standar Kurikulum Merdeka!`
+            : `${docMeta?.fullTitle || "Dokumen"} berhasil dibuat!`
+        );
       }
     } catch (err: any) {
       console.error(err);
-      notifySimpanError(`Gagal membuat ${docMeta?.fullTitle}: ` + (err?.message || "Terjadi kesalahan server."));
+      notifySimpanError(`Gagal membuat ${docMeta?.fullTitle}: ` + (err?.message || "Terjadi kesalahan."));
     } finally {
       setIsGenerating(false);
     }
@@ -567,6 +598,7 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
   const handleGenerateAllDocs = async () => {
     setIsGenerating(true);
     const types = ["rme", "analisis_cp", "tp", "atp", "prota", "prosem", "kktp"];
+    const payloadFormData = getPayloadFormData();
 
     for (let i = 0; i < types.length; i++) {
       const t = types[i];
@@ -574,18 +606,39 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
       setGeneratingProgress(`[${i + 1}/${types.length}] Menyusun ${docMeta?.fullTitle}...`);
 
       try {
-        const res = await fetch("/api/ai/generate-perangkat-ajar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            docType: t,
-            formData: getPayloadFormData()
-          })
-        });
+        let cleanedHtml = "";
 
-        const data = await res.json();
-        if (data.status === "success" && data.html) {
-          const cleanedHtml = sanitizeHtmlForOutput(data.html);
+        if (t === "rme") {
+          cleanedHtml = sanitizeHtmlForOutput(buildInstantRmeHtml());
+        } else {
+          try {
+            const res = await fetch("/api/ai/generate-perangkat-ajar", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                docType: t,
+                formData: payloadFormData
+              })
+            });
+
+            const contentType = res.headers.get("content-type") || "";
+            if (res.ok && contentType.includes("application/json")) {
+              const data = await res.json();
+              if (data.status === "success" && data.html) {
+                cleanedHtml = sanitizeHtmlForOutput(data.html);
+              }
+            }
+          } catch (apiErr) {
+            console.warn(`API call for ${t} timed out or failed, using instant builder:`, apiErr);
+          }
+
+          // Fallback if API didn't produce html
+          if (!cleanedHtml) {
+            cleanedHtml = sanitizeHtmlForOutput(buildKurikulumMerdekaDocument(t, payloadFormData));
+          }
+        }
+
+        if (cleanedHtml) {
           setGeneratedDocs((prev) => ({
             ...prev,
             [t]: cleanedHtml
@@ -597,7 +650,7 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
     }
 
     setIsGenerating(false);
-    notifySimpanSuccess("Seluruh 7 Dokumen Administrasi Perangkat Ajar AI Berhasil Dibuat!");
+    notifySimpanSuccess("Seluruh 7 Dokumen Administrasi Perangkat Ajar Berhasil Disusun!");
   };
 
   // Print A4 Function

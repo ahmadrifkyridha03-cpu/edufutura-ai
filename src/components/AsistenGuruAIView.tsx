@@ -64,6 +64,15 @@ export const AsistenGuruAIView: React.FC<AsistenGuruAIViewProps> = ({ config }) 
         })
       });
 
+      const contentType = res.headers.get("content-type") || "";
+      if (!res.ok || !contentType.includes("application/json")) {
+        throw new Error(
+          res.status === 504
+            ? "Waktu respons asisten AI melebihi batas (timeout). Silakan coba ajukan pertanyaan kembali."
+            : "Layanan asisten AI sedang sibuk. Silakan coba sesaat lagi."
+        );
+      }
+
       const data = await res.json();
       if (data.status === "success") {
         const assistantMsg: ChatMessage = {
