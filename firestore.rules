@@ -1,9 +1,91 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions for schema integrity
+    function isNonEmptyString(val) {
+      return val is string && val.size() > 0 && val.size() <= 500;
+    }
+
+    // 1. Data Siswa
+    match /data_siswa/{siswaId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.nama is string
+                           && request.resource.data.kelas is string
+                           && request.resource.data.nama.size() > 0;
+      allow delete: if true;
+    }
+
+    // 2. Mata Pelajaran
+    match /mapel/{mapelId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.namaMapel is string
+                           && request.resource.data.namaMapel.size() > 0;
+      allow delete: if true;
+    }
+
+    // 3. Jadwal Mengajar
+    match /jadwal/{jadwalId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.hari is string;
+      allow delete: if true;
+    }
+
+    // 4. Log Presensi Siswa
+    match /log_absensi/{logId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.idSiswa is string
+                           && request.resource.data.status is string;
+      allow delete: if true;
+    }
+
+    // 5. Data Nilai
+    match /data_nilai/{nilaiId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.idSiswa is string
+                           && (request.resource.data.nilai is number || request.resource.data.nilai is string);
+      allow delete: if true;
+    }
+
+    // 6. Jurnal & Agenda Mengajar
+    match /jurnal_agenda/{agendaId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // 7. Siswa Bimbingan Wali
+    match /siswa_bimbingan/{sbId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.nama is string;
+      allow delete: if true;
+    }
+
+    // 8. Catatan Bimbingan Wali
+    match /bimbingan_wali/{bwId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // 9. Pengaturan & Profil Aplikasi
+    match /pengaturan/{configId} {
+      allow read: if true;
+      allow create, update: if request.resource.data is map;
+      allow delete: if false; // Mencegah penghapusan master config
+    }
+
+    // 10. Dokumen Perangkat Ajar & Modul Ajar AI Cache
+    match /perangkat_ajar_ai/{docId} {
+      allow read: if true;
+      allow create, update: if request.resource.data is map;
+      allow delete: if true;
+    }
+
+    // DEFAULT DENY: Tolak semua koleksi lain di luar skema resmi
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: false;
     }
   }
 }
-

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { 
   PieChart, 
   GraduationCap, 
   Sparkles, 
-  Printer,
+  Printer, 
   Clock, 
   ClipboardCheck, 
   Star, 
@@ -22,27 +22,31 @@ import {
 } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
-import { DashboardView } from "./components/DashboardView";
-import { KelolaSiswaView } from "./components/KelolaSiswaView";
-import { CetakKartuQRView } from "./components/CetakKartuQRView";
-import { KelolaMapelView } from "./components/KelolaMapelView";
-import { JadwalMengajarView } from "./components/JadwalMengajarView";
-import { InputAbsensiView } from "./components/InputAbsensiView";
-import { InputPenilaianView } from "./components/InputPenilaianView";
-import { CetakRaportView } from "./components/CetakRaportView";
-import { AgendaMengajarView } from "./components/AgendaMengajarView";
-import { BimbinganWaliView } from "./components/BimbinganWaliView";
-import { DownloadPerangkatAjarView } from "./components/DownloadPerangkatAjarView";
-import { PerangkatAjarKBCView } from "./components/PerangkatAjarKBCView";
-import { GeneratorPerangkatAjarAIView } from "./components/GeneratorPerangkatAjarAIView";
-import { ModulAjarAIView } from "./components/ModulAjarAIView";
-import { AsistenGuruAIView } from "./components/AsistenGuruAIView";
-import { GeneratorLkpdAIView } from "./components/GeneratorLkpdAIView";
-import { GeneratorAILainnyaView } from "./components/GeneratorAILainnyaView";
-import { PusatLaporanView } from "./components/PusatLaporanView";
-import { PengaturanView } from "./components/PengaturanView";
-import { ResetDatabaseView } from "./components/ResetDatabaseView";
 import { WelcomeGuideModal } from "./components/WelcomeGuideModal";
+import { ViewLoadingSkeleton } from "./components/ViewLoadingSkeleton";
+
+// Dynamic Code-Splitting for all views to reduce initial bundle size and maximize load speed
+const DashboardView = lazy(() => import("./components/DashboardView").then(m => ({ default: m.DashboardView })));
+const KelolaSiswaView = lazy(() => import("./components/KelolaSiswaView").then(m => ({ default: m.KelolaSiswaView })));
+const CetakKartuQRView = lazy(() => import("./components/CetakKartuQRView").then(m => ({ default: m.CetakKartuQRView })));
+const KelolaMapelView = lazy(() => import("./components/KelolaMapelView").then(m => ({ default: m.KelolaMapelView })));
+const JadwalMengajarView = lazy(() => import("./components/JadwalMengajarView").then(m => ({ default: m.JadwalMengajarView })));
+const InputAbsensiView = lazy(() => import("./components/InputAbsensiView").then(m => ({ default: m.InputAbsensiView })));
+const InputPenilaianView = lazy(() => import("./components/InputPenilaianView").then(m => ({ default: m.InputPenilaianView })));
+const CetakRaportView = lazy(() => import("./components/CetakRaportView").then(m => ({ default: m.CetakRaportView })));
+const AgendaMengajarView = lazy(() => import("./components/AgendaMengajarView").then(m => ({ default: m.AgendaMengajarView })));
+const BimbinganWaliView = lazy(() => import("./components/BimbinganWaliView").then(m => ({ default: m.BimbinganWaliView })));
+const DownloadPerangkatAjarView = lazy(() => import("./components/DownloadPerangkatAjarView").then(m => ({ default: m.DownloadPerangkatAjarView })));
+const PerangkatAjarKBCView = lazy(() => import("./components/PerangkatAjarKBCView").then(m => ({ default: m.PerangkatAjarKBCView })));
+const GeneratorPerangkatAjarAIView = lazy(() => import("./components/GeneratorPerangkatAjarAIView").then(m => ({ default: m.GeneratorPerangkatAjarAIView })));
+const ModulAjarAIView = lazy(() => import("./components/ModulAjarAIView").then(m => ({ default: m.ModulAjarAIView })));
+const AsistenGuruAIView = lazy(() => import("./components/AsistenGuruAIView").then(m => ({ default: m.AsistenGuruAIView })));
+const GeneratorLkpdAIView = lazy(() => import("./components/GeneratorLkpdAIView").then(m => ({ default: m.GeneratorLkpdAIView })));
+const GeneratorAILainnyaView = lazy(() => import("./components/GeneratorAILainnyaView").then(m => ({ default: m.GeneratorAILainnyaView })));
+const PusatLaporanView = lazy(() => import("./components/PusatLaporanView").then(m => ({ default: m.PusatLaporanView })));
+const PengaturanView = lazy(() => import("./components/PengaturanView").then(m => ({ default: m.PengaturanView })));
+const ResetDatabaseView = lazy(() => import("./components/ResetDatabaseView").then(m => ({ default: m.ResetDatabaseView })));
+
 
 import { 
   subscribeCollection, 
@@ -384,118 +388,120 @@ export default function App() {
         )}
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-8 custom-scrollbar pb-24 lg:pb-8">
-          {activeTab === "dashboard" && (
-            <DashboardView
-              siswaList={siswaList}
-              mapelList={mapelList}
-              absensiList={absensiList}
-              nilaiList={nilaiList}
-              jadwalList={jadwalList}
-              onNavigate={(tab) => setActiveTab(tab)}
-              onOpenWelcomeGuide={() => setIsWelcomeGuideOpen(true)}
-            />
-          )}
+          <Suspense fallback={<ViewLoadingSkeleton />}>
+            {activeTab === "dashboard" && (
+              <DashboardView
+                siswaList={siswaList}
+                mapelList={mapelList}
+                absensiList={absensiList}
+                nilaiList={nilaiList}
+                jadwalList={jadwalList}
+                onNavigate={(tab) => setActiveTab(tab)}
+                onOpenWelcomeGuide={() => setIsWelcomeGuideOpen(true)}
+              />
+            )}
 
-          {activeTab === "siswa" && <KelolaSiswaView siswaList={siswaList} />}
+            {activeTab === "siswa" && <KelolaSiswaView siswaList={siswaList} />}
 
-          {activeTab === "kartu" && <CetakKartuQRView siswaList={siswaList} config={config} />}
+            {activeTab === "kartu" && <CetakKartuQRView siswaList={siswaList} config={config} />}
 
-          {activeTab === "mapel" && <KelolaMapelView mapelList={mapelList} />}
+            {activeTab === "mapel" && <KelolaMapelView mapelList={mapelList} />}
 
-          {activeTab === "jadwal" && (
-            <JadwalMengajarView
-              jadwalList={jadwalList}
-              mapelList={mapelList}
-              siswaList={siswaList}
-            />
-          )}
+            {activeTab === "jadwal" && (
+              <JadwalMengajarView
+                jadwalList={jadwalList}
+                mapelList={mapelList}
+                siswaList={siswaList}
+              />
+            )}
 
-          {activeTab === "absensi" && (
-            <InputAbsensiView
-              siswaList={siswaList}
-              mapelList={mapelList}
-              absensiList={absensiList}
-              config={config}
-            />
-          )}
+            {activeTab === "absensi" && (
+              <InputAbsensiView
+                siswaList={siswaList}
+                mapelList={mapelList}
+                absensiList={absensiList}
+                config={config}
+              />
+            )}
 
-          {activeTab === "penilaian" && (
-            <InputPenilaianView
-              siswaList={siswaList}
-              mapelList={mapelList}
-              nilaiList={nilaiList}
-              config={config}
-            />
-          )}
+            {activeTab === "penilaian" && (
+              <InputPenilaianView
+                siswaList={siswaList}
+                mapelList={mapelList}
+                nilaiList={nilaiList}
+                config={config}
+              />
+            )}
 
-          {activeTab === "raport" && (
-            <CetakRaportView
-              siswaList={siswaList}
-              mapelList={mapelList}
-              absensiList={absensiList}
-              nilaiList={nilaiList}
-              config={config}
-            />
-          )}
+            {activeTab === "raport" && (
+              <CetakRaportView
+                siswaList={siswaList}
+                mapelList={mapelList}
+                absensiList={absensiList}
+                nilaiList={nilaiList}
+                config={config}
+              />
+            )}
 
-          {activeTab === "agenda" && (
-            <AgendaMengajarView
-              agendaList={agendaList}
-              mapelList={mapelList}
-              siswaList={siswaList}
-              config={config}
-            />
-          )}
+            {activeTab === "agenda" && (
+              <AgendaMengajarView
+                agendaList={agendaList}
+                mapelList={mapelList}
+                siswaList={siswaList}
+                config={config}
+              />
+            )}
 
-          {activeTab === "bimbingan" && (
-            <BimbinganWaliView
-              bimbinganList={bimbinganList}
-              siswaBimbinganList={siswaBimbinganList}
-              siswaList={siswaList}
-              config={config}
-            />
-          )}
+            {activeTab === "bimbingan" && (
+              <BimbinganWaliView
+                bimbinganList={bimbinganList}
+                siswaBimbinganList={siswaBimbinganList}
+                siswaList={siswaList}
+                config={config}
+              />
+            )}
 
-          {activeTab === "downloadperangkat" && <DownloadPerangkatAjarView />}
+            {activeTab === "downloadperangkat" && <DownloadPerangkatAjarView />}
 
-          {activeTab === "perangkat_kbc" && <PerangkatAjarKBCView config={config} />}
+            {activeTab === "perangkat_kbc" && <PerangkatAjarKBCView config={config} />}
 
-          {activeTab === "perangkat_ai" && <GeneratorPerangkatAjarAIView config={config} />}
+            {activeTab === "perangkat_ai" && <GeneratorPerangkatAjarAIView config={config} />}
 
-          {activeTab === "modulai" && <ModulAjarAIView config={config} />}
+            {activeTab === "modulai" && <ModulAjarAIView config={config} />}
 
-          {activeTab === "asistenai" && <AsistenGuruAIView config={config} />}
+            {activeTab === "asistenai" && <AsistenGuruAIView config={config} />}
 
-          {activeTab === "lkpdai" && <GeneratorLkpdAIView config={config} />}
+            {activeTab === "lkpdai" && <GeneratorLkpdAIView config={config} />}
 
-          {activeTab === "ailainnya" && <GeneratorAILainnyaView />}
+            {activeTab === "ailainnya" && <GeneratorAILainnyaView />}
 
-          {activeTab === "laporan" && (
-            <PusatLaporanView
-              siswaList={siswaList}
-              mapelList={mapelList}
-              absensiList={absensiList}
-              nilaiList={nilaiList}
-              agendaList={agendaList}
-              bimbinganList={bimbinganList}
-              config={config}
-              onNavigateToRaport={() => setActiveTab("raport")}
-            />
-          )}
+            {activeTab === "laporan" && (
+              <PusatLaporanView
+                siswaList={siswaList}
+                mapelList={mapelList}
+                absensiList={absensiList}
+                nilaiList={nilaiList}
+                agendaList={agendaList}
+                bimbinganList={bimbinganList}
+                config={config}
+                onNavigateToRaport={() => setActiveTab("raport")}
+              />
+            )}
 
-          {activeTab === "pengaturan" && (
-            <PengaturanView
-              config={config}
-              onNavigateToReset={() => setActiveTab("resetdb")}
-              nilaiList={nilaiList}
-              siswaList={siswaList}
-              mapelList={mapelList}
-            />
-          )}
+            {activeTab === "pengaturan" && (
+              <PengaturanView
+                config={config}
+                onNavigateToReset={() => setActiveTab("resetdb")}
+                nilaiList={nilaiList}
+                siswaList={siswaList}
+                mapelList={mapelList}
+              />
+            )}
 
-          {activeTab === "resetdb" && (
-            <ResetDatabaseView onSuccessReset={handleSuccessReset} />
-          )}
+            {activeTab === "resetdb" && (
+              <ResetDatabaseView onSuccessReset={handleSuccessReset} />
+            )}
+          </Suspense>
         </main>
 
         {/* Native Android Bottom Navigation Bar (4 Utama Menu: Dashboard, Akademik, AI Tools, Laporan) */}
