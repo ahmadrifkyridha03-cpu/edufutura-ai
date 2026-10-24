@@ -25,6 +25,7 @@ import {
 import { Pengaturan, RmeMonthItem, AgendaSekolahItem } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
 import { buildKurikulumMerdekaDocument } from "../utils/kurikulumMerdekaBuilder";
+import { savePerangkatSyncData, extractSyncDataFromPerangkat } from "../utils/perangkatSyncHelper";
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
@@ -215,7 +216,7 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
   ];
 
   const handleFillSample = () => {
-    setFormData({
+    const newSampleData = {
       school: config.Nama_Sekolah || "SMP Islam Athirah Baruga Antang",
       subject: "Matematika",
       singkatanMapel: "MTK",
@@ -240,12 +241,15 @@ Peserta didik mampu menghitung luas lingkaran, volume bangun ruang sisi datar, m
 
 Elemen 4 — Analisis Data dan Peluang:
 Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`
-    });
+    };
+    setFormData(newSampleData);
     setRmeGanjil(DEFAULT_RME_GANJIL);
     setRmeGenap(DEFAULT_RME_GENAP);
     setAgendaSekolah(DEFAULT_AGENDA_SEKOLAH);
     setCatatanKalender(DEFAULT_CATATAN_KALENDER);
-    notifySimpanSuccess("Contoh data Matematika Kelas VIII & RME Kalender Sekolah berhasil dimuat!");
+    // Sinkronkan ke Modul Ajar AI
+    savePerangkatSyncData(extractSyncDataFromPerangkat(newSampleData));
+    notifySimpanSuccess("Contoh data Matematika Kelas VIII & RME Kalender Sekolah berhasil dimuat & disinkronkan ke Modul Ajar!");
   };
 
   // Helper to sanitize HTML output and ensure school logo in top-left header
@@ -499,13 +503,20 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
     `;
   };
 
-  // Auto-generate clean initial RME preview on mount
+  // Auto-generate clean initial RME preview on mount & auto-sync to Modul Ajar AI
   React.useEffect(() => {
     if (!generatedDocs.rme) {
       setGeneratedDocs((prev) => ({
         ...prev,
         rme: buildInstantRmeHtml()
       }));
+    }
+    // Sinkronkan data perangkat ajar ke Modul Ajar AI secara otomatis
+    try {
+      const syncData = extractSyncDataFromPerangkat(formData);
+      savePerangkatSyncData(syncData);
+    } catch (syncErr) {
+      console.warn("Gagal inisialisasi sinkronisasi perangkat:", syncErr);
     }
   }, []);
 
@@ -581,6 +592,14 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
           ...prev,
           [targetType]: cleanedHtml
         }));
+
+        // Sinkronkan data perangkat & bab ke Modul Ajar AI
+        try {
+          savePerangkatSyncData(extractSyncDataFromPerangkat(payloadFormData));
+        } catch (e) {
+          console.warn("Gagal sinkron perangkat pasca generasi:", e);
+        }
+
         notifySimpanSuccess(
           isFallbackUsed
             ? `${docMeta?.fullTitle || "Dokumen"} berhasil disusun otomatis sesuai standar Kurikulum Merdeka!`
@@ -649,8 +668,15 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
       }
     }
 
+    // Sinkronkan seluruh data perangkat & bab ke Modul Ajar AI
+    try {
+      savePerangkatSyncData(extractSyncDataFromPerangkat(payloadFormData));
+    } catch (e) {
+      console.warn("Gagal sinkron perangkat pasca generasi all docs:", e);
+    }
+
     setIsGenerating(false);
-    notifySimpanSuccess("Seluruh 7 Dokumen Administrasi Perangkat Ajar Berhasil Disusun!");
+    notifySimpanSuccess("Seluruh 7 Dokumen Administrasi Perangkat Ajar Berhasil Disusun & Disinkronkan ke Modul Ajar!");
   };
 
   // Print A4 Function

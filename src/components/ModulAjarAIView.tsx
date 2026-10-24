@@ -22,10 +22,18 @@ import {
   Cpu,
   Terminal,
   Activity,
-  Zap
+  Zap,
+  RefreshCw,
+  SlidersHorizontal
 } from "lucide-react";
 import { ModulFormState, Pengaturan } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyCetakSuccess, notifyUnduhSuccess, notifyUnduhError } from "../lib/swal";
+import { 
+  getPerangkatSyncData, 
+  getDefaultBabList, 
+  PerangkatAjarSyncData, 
+  PerangkatBabItem 
+} from "../utils/perangkatSyncHelper";
 
 interface ModulAjarAIViewProps {
   config: Pengaturan;
@@ -46,13 +54,13 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
     jenjang: "SMP",
     fase: "Fase D (Kelas 7-9)",
     kelas: "VII",
-    waktu: "2 x 45 JP",
+    waktu: "4 x 45 JP",
     mataPelajaran: "Informatika",
-    topik: "Berpikir Komputasional dan Algoritma Dasar",
-    subTopik: "Pengenalan Flowchart dan Pseudocode",
+    topik: "Bab 1: Berpikir Komputasional dan Algoritma Dasar",
     jumlahPertemuan: "2",
     model: "Problem Based Learning (PBL)",
     tujuan: "",
+    karakteristik: "Heterogen, aktif, siap belajar mandiri dan kolaboratif.",
     formatOutput: "standar_merdeka",
     templateCategory: "bawaan",
     docNumberIso: "015/F/KUR/00/IX/2025",
@@ -63,6 +71,13 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
     sertakanLkpd: true,
     sertakanLampiran017: true,
   });
+
+  // State sinkronisasi Perangkat Ajar AI
+  const [syncData, setSyncData] = useState<PerangkatAjarSyncData | null>(null);
+  const [daftarBab, setDaftarBab] = useState<PerangkatBabItem[]>([]);
+  const [selectedBabId, setSelectedBabId] = useState<string>("bab-1");
+  const [isManualBabInput, setIsManualBabInput] = useState<boolean>(false);
+  const [isSyncActive, setIsSyncActive] = useState<boolean>(false);
 
   const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
   const [isKopAccordionOpen, setIsKopAccordionOpen] = useState(false);
@@ -106,6 +121,101 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
       tempatTtd: prev.tempatTtd === "Kerinci" && config.Tempat_Tanda_Tangan ? config.Tempat_Tanda_Tangan : prev.tempatTtd
     }));
   }, [config]);
+
+  const applySyncData = (data: PerangkatAjarSyncData | null, forceSelectFirst = false) => {
+    if (!data || !data.daftarBab || data.daftarBab.length === 0) {
+      const defBabs = getDefaultBabList(form.mataPelajaran, form.fase);
+      setDaftarBab(defBabs);
+      setIsSyncActive(false);
+      return;
+    }
+
+    setSyncData(data);
+    setIsSyncActive(true);
+    setDaftarBab(data.daftarBab);
+
+    // Otomatis sinkronkan identitas modul dari data perangkat ajar
+    setForm(prev => {
+      const activeBab = (forceSelectFirst || !prev.topik)
+        ? data.daftarBab[0]
+        : (data.daftarBab.find(b => b.id === selectedBabId) || data.daftarBab[0]);
+
+      return {
+        ...prev,
+        mataPelajaran: data.mataPelajaran || prev.mataPelajaran,
+        jenjang: data.jenjang || prev.jenjang,
+        fase: data.fase || prev.fase,
+        kelas: data.kelas || prev.kelas,
+        tahunAjaran: data.tahunAjaran || prev.tahunAjaran,
+        namaSekolah: data.namaSekolah || prev.namaSekolah,
+        namaGuru: data.namaGuru || prev.namaGuru,
+        nipGuru: data.nipGuru || prev.nipGuru,
+        namaKepsek: data.namaKepsek || prev.namaKepsek,
+        nipKepsek: data.nipKepsek || prev.nipKepsek,
+        tempatTtd: data.tempatTtd || prev.tempatTtd,
+        // Otomatis set topik & tujuan dari bab
+        topik: activeBab?.judulBab || prev.topik,
+        tujuan: activeBab?.tujuanPembelajaran || prev.tujuan,
+        waktu: activeBab?.alokasiWaktu || prev.waktu,
+        jumlahPertemuan: activeBab?.jumlahPertemuan || prev.jumlahPertemuan
+      };
+    });
+
+    if (data.daftarBab.length > 0) {
+      setSelectedBabId(data.daftarBab[0].id);
+    }
+  };
+
+  // Muat data sinkron awal dan dengarkan perubahan real-time dari Generator Perangkat Ajar
+  useEffect(() => {
+    const data = getPerangkatSyncData();
+    applySyncData(data, true);
+
+    const handleSyncEvent = (e: any) => {
+      const freshData = e.detail || getPerangkatSyncData();
+      applySyncData(freshData, true);
+    };
+
+    window.addEventListener("edufutura_perangkat_sync_updated", handleSyncEvent);
+    return () => window.removeEventListener("edufutura_perangkat_sync_updated", handleSyncEvent);
+  }, []);
+
+  // Handler saat guru memilih bab dari dropdown hasil perangkat ajar
+  const handleBabSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const bId = e.target.value;
+    setSelectedBabId(bId);
+
+    if (bId === "custom") {
+      setIsManualBabInput(true);
+      return;
+    }
+
+    const bab = daftarBab.find(b => b.id === bId);
+    if (bab) {
+      setIsManualBabInput(false);
+      setForm(prev => ({
+        ...prev,
+        topik: bab.judulBab,
+        tujuan: bab.tujuanPembelajaran,
+        waktu: bab.alokasiWaktu || prev.waktu,
+        jumlahPertemuan: bab.jumlahPertemuan || prev.jumlahPertemuan
+      }));
+      notifySimpanSuccess(`Bab dan Tujuan Pembelajaran "${bab.judulBab}" berhasil diterapkan!`);
+    }
+  };
+
+  // Muat ulang data sinkron secara manual
+  const handleManualSyncReload = () => {
+    const data = getPerangkatSyncData();
+    if (data) {
+      applySyncData(data, true);
+      notifySimpanSuccess("Data berhasil disinkronkan ulang dengan Generator Perangkat Ajar!");
+    } else {
+      const def = getDefaultBabList(form.mataPelajaran, form.fase);
+      setDaftarBab(def);
+      notifySimpanError("Belum ada data dari Generator Perangkat Ajar. Menampilkan daftar bab standar.");
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -832,48 +942,125 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
           {/* STEP 2: PEDAGOGI & SKENARIO */}
           {activeStep === 2 && (
             <div className="space-y-4">
-              <p className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/10 pb-1 font-display">
-                Topik & Strategi Pembelajaran
-              </p>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bab / Topik Utama *</label>
-                <input
-                  type="text"
-                  id="topik"
-                  value={form.topik}
-                  onChange={handleChange}
-                  placeholder="Misal: Berpikir Komputasional dan Algoritma"
-                  className="w-full px-3 py-2 text-xs font-bold text-cyan-900 dark:text-cyan-200 border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none focus:border-cyan-500"
-                />
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-1.5">
+                <p className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider font-display">
+                  Topik & Strategi Pembelajaran (1 Bab Penuh)
+                </p>
+                <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                  {form.mataPelajaran} &bull; {form.kelas}
+                </span>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sub-Topik / Materi Spesifik</label>
-                <input
-                  type="text"
-                  id="subTopik"
-                  value={form.subTopik}
-                  onChange={handleChange}
-                  placeholder="Opsional / Misal: Pengenalan Flowchart & Pseudocode"
-                  className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none focus:border-cyan-500"
-                />
+              {/* Card Status Sinkronisasi Generator Perangkat Ajar */}
+              <div className="p-3 bg-gradient-to-r from-cyan-950/40 via-indigo-950/30 to-blue-950/40 border border-cyan-500/30 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-white font-display">
+                        Tersinkron dengan Perangkat Ajar AI
+                      </span>
+                      <span className={`text-[9.5px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                        isSyncActive ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                      }`}>
+                        {isSyncActive ? "✓ Sinkron Aktif" : "Standar Merdeka"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-cyan-200/80 truncate">
+                      {form.mataPelajaran} &bull; {form.fase} &bull; {daftarBab.length} Bab Teridentifikasi
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleManualSyncReload}
+                  className="px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-400/30 text-cyan-300 text-[10px] font-mono font-bold flex items-center gap-1 shrink-0 transition-all cursor-pointer"
+                  title="Perbarui & sinkronkan ulang dari Generator Perangkat Ajar"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Sinkronkan Ulang</span>
+                </button>
               </div>
 
+              {/* Pilihan Bab / Topik Utama */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-display">
+                    <BookOpen className="w-3.5 h-3.5 text-cyan-500" />
+                    Bab / Topik Utama *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIsManualBabInput(!isManualBabInput)}
+                    className="text-[10.5px] font-mono text-cyan-600 dark:text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                  >
+                    {isManualBabInput ? "← Pilih dari Hasil Perangkat Ajar" : "✏️ Ketik Judul Bab Manual"}
+                  </button>
+                </div>
+
+                {!isManualBabInput && daftarBab.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <select
+                        value={selectedBabId}
+                        onChange={handleBabSelect}
+                        className="w-full px-3 py-2.5 text-xs font-bold text-cyan-950 dark:text-cyan-100 border-2 rounded-xl bg-white dark:bg-slate-900 border-cyan-500/60 dark:border-cyan-500/50 shadow-sm outline-none focus:ring-2 focus:ring-cyan-500 font-sans"
+                      >
+                        {daftarBab.map((bab) => (
+                          <option key={bab.id} value={bab.id}>
+                            {bab.judulBab} — {bab.jumlahPertemuan} Pertemuan ({bab.alokasiWaktu})
+                          </option>
+                        ))}
+                        <option value="custom">✏️ Masukkan Judul Bab Lain Secara Manual...</option>
+                      </select>
+                    </div>
+
+                    {/* Ringkasan Ruang Lingkup Materi Bab */}
+                    {daftarBab.find(b => b.id === selectedBabId)?.ringkasanMateri && (
+                      <div className="text-[10.5px] text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-slate-900/60 p-2.5 rounded-lg border border-cyan-200/60 dark:border-cyan-800/50 leading-relaxed flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-1.5 shrink-0"></span>
+                        <div>
+                          <strong className="text-cyan-900 dark:text-cyan-200">Ruang Lingkup Materi: </strong>
+                          <span>{daftarBab.find(b => b.id === selectedBabId)?.ringkasanMateri}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    id="topik"
+                    value={form.topik}
+                    onChange={handleChange}
+                    placeholder="Misal: Bab 1: Berpikir Komputasional dan Algoritma Dasar"
+                    className="w-full px-3 py-2 text-xs font-bold text-cyan-900 dark:text-cyan-200 border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none focus:border-cyan-500"
+                  />
+                )}
+
+                {/* Info Cakupan 1 Bab Penuh */}
+                <div className="mt-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[10.5px] text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span>Modul ajar akan disusun secara utuh dari <strong>awal sampai akhir bab</strong> mencakup seluruh rangkaian pertemuan hingga LKPD.</span>
+                </div>
+              </div>
+
+              {/* Alokasi Waktu & Jumlah Pertemuan Bab */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Alokasi Waktu *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Alokasi Waktu Bab *</label>
                   <input
                     type="text"
                     id="waktu"
                     value={form.waktu}
                     onChange={handleChange}
-                    placeholder="2 x 45 JP"
+                    placeholder="4 x 45 JP"
                     className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jumlah Pertemuan *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Jumlah Pertemuan Bab *</label>
                   <select
                     id="jumlahPertemuan"
                     value={form.jumlahPertemuan}
@@ -884,10 +1071,13 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                     <option value="2">2 Pertemuan</option>
                     <option value="3">3 Pertemuan</option>
                     <option value="4">4 Pertemuan</option>
+                    <option value="5">5 Pertemuan</option>
+                    <option value="6">6 Pertemuan</option>
                   </select>
                 </div>
               </div>
 
+              {/* Model Pembelajaran */}
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Model Pembelajaran *</label>
                 <select
@@ -906,6 +1096,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                 </select>
               </div>
 
+              {/* Karakteristik & Diferensiasi */}
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Karakteristik & Diferensiasi Siswa</label>
                 <textarea
@@ -918,16 +1109,41 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                 />
               </div>
 
+              {/* Tujuan Pembelajaran Khusus (Otomatis dari Perangkat Ajar) */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tujuan Pembelajaran Khusus (Opsional)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 font-display">
+                    <Sparkles className="w-3.5 h-3.5 text-cyan-500" />
+                    Tujuan Pembelajaran (Otomatis dari Perangkat Ajar)
+                  </label>
+                  {daftarBab.find(b => b.id === selectedBabId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const b = daftarBab.find(bab => bab.id === selectedBabId);
+                        if (b) {
+                          setForm(prev => ({ ...prev, tujuan: b.tujuanPembelajaran }));
+                          notifySimpanSuccess("Tujuan Pembelajaran bab dikembalikan ke formula perangkat ajar!");
+                        }
+                      }}
+                      className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Reset TP Bab
+                    </button>
+                  )}
+                </div>
                 <textarea
                   id="tujuan"
-                  rows={2}
+                  rows={3}
                   value={form.tujuan}
                   onChange={handleChange}
-                  placeholder="Kosongkan jika ingin dirumuskan otomatis oleh AI berbasis Taksonomi Bloom / Marzano..."
-                  className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none custom-scrollbar"
+                  placeholder="Tujuan Pembelajaran otomatis terisi dari Perangkat Ajar, dapat Anda sesuaikan..."
+                  className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none custom-scrollbar font-sans leading-relaxed"
                 />
+                <p className="text-[9.5px] text-slate-500 dark:text-slate-400 mt-1">
+                  Tujuan pembelajaran di atas otomatis diambil dari dokumen TP & ATP yang dihasilkan oleh Generator Perangkat Ajar AI.
+                </p>
               </div>
 
               <div className="flex gap-2">

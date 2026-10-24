@@ -771,7 +771,7 @@ ${sertakanLkpd ? `
 `;
       }
 
-      const userPrompt = `DATA MODUL AJAR:
+      const userPrompt = `DATA MODUL AJAR (CAKUPAN 1 BAB UTUH DARI AWAL HINGGA AKHIR PERTEMUAN):
 - Format Dokumen yang Diminta: ${formatOutput}
 - Nama Guru: ${namaGuru} (NIP: ${nipGuru})
 - Satuan Pendidikan: ${namaSekolah} (${alamatSekolah})
@@ -780,14 +780,19 @@ ${sertakanLkpd ? `
 - Jenjang: ${formData.jenjang || 'SMP'}
 - Fase: ${formData.fase || 'Fase D (Kelas 7-9)'}
 - Kelas: ${formData.kelas || 'VII'}
-- Alokasi Waktu: ${formData.waktu || '2 x 45 JP'}
+- Alokasi Waktu: ${formData.waktu || '4 x 45 JP'}
 - Mata Pelajaran: ${formData.mataPelajaran || 'Umum'}
-- Bab/Topik Utama: ${formData.topik || 'Topik Pembelajaran'} ${formData.subTopik ? `- ${formData.subTopik}` : ''}
-- Jumlah Pertemuan: ${formData.jumlahPertemuan || '2'} Pertemuan
+- Bab / Topik Utama (1 Bab Penuh): ${formData.topik || 'Topik Pembelajaran'}
+- Jumlah Pertemuan Bab: ${formData.jumlahPertemuan || '2'} Pertemuan (Jelaskan seluruh pertemuan 1 s.d. ${formData.jumlahPertemuan || '2'} secara berurutan dan mendalam dari awal hingga penuntasan bab)
 - Model Pembelajaran: ${formData.model || 'Problem Based Learning (PBL)'}
 - Metode Pembelajaran: ${metodeText}
-- Tujuan Pembelajaran Spesifik: ${formData.tujuan || 'Siswa dapat menganalisis dan menerapkan konsep materi secara kritis dan kreatif.'}
+- Tujuan Pembelajaran (TP) Bab: ${formData.tujuan || 'Siswa dapat menganalisis dan menerapkan konsep materi bab secara kritis, mandiri, dan bermakna.'}
 - Karakteristik Murid: ${formData.karakteristik || 'Heterogen, siap belajar aktif.'}
+
+INSTRUKSI KHUSUS CAKUPAN 1 BAB PENUH:
+- Modul Ajar ini mencakup 1 Bab penuh dari awal sampai akhir materi.
+- Seluruh pertemuan (Pertemuan 1 s.d. ${formData.jumlahPertemuan || '2'}) harus dijabarkan detail langkah pembelajarannya (Kegiatan Pendahuluan, Kegiatan Inti Mindful-Meaningful-Joyful, dan Kegiatan Penutup Reflektif).
+- Lengkapi dengan asesmen formatif berkala dan asesmen sumatif penutup bab.
 
 FORMAT WAJIB LAYOUT HTML:
 ${formatTemplate}`;
