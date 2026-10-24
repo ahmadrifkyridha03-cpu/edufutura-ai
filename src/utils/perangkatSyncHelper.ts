@@ -1,6 +1,6 @@
 /**
  * Perangkat Ajar Sync Helper
- * Menghubungkan Generator Perangkat Ajar AI dengan AI Modul Ajar Generator
+ * Menghubungkan Generator Perangkat Ajar AI dengan AI Modul Ajar Generator.
  * Menyimpan dan mengekstrak data Bab, Capaian Pembelajaran, dan Tujuan Pembelajaran (TP).
  */
 
@@ -32,6 +32,7 @@ export interface PerangkatAjarSyncData {
   tanggalTtd: string;
   cpRasional?: string;
   daftarBab: PerangkatBabItem[];
+  selectedBabId?: string;
   terakhirDisinkronkan: string;
 }
 
@@ -43,6 +44,7 @@ const STORAGE_KEY = "edufutura_perangkat_ajar_sync";
 export function getDefaultBabList(subject: string = "Matematika", level: string = "Fase D / Kelas VIII"): PerangkatBabItem[] {
   const s = (subject || "").toLowerCase();
 
+  // 1. Matematika
   if (s.includes("matematika") || s.includes("mtk")) {
     return [
       {
@@ -92,6 +94,7 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
     ];
   }
 
+  // 2. Informatika
   if (s.includes("informatika") || s.includes("komputer") || s.includes("tik")) {
     return [
       {
@@ -141,6 +144,7 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
     ];
   }
 
+  // 3. Bahasa Indonesia
   if (s.includes("indonesia")) {
     return [
       {
@@ -170,7 +174,7 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
         nomor: 3,
         judulBab: "Bab 3: Menyampaikan Ide Positif Melalui Teks Prosedur",
         elemenName: "Membaca & Mempresentasikan",
-        ringkasanMateri: "Kaidah teks prosedur, kalimat imperatif, langkah terurut, dan pembuatan panduan hidup sehat/kreatif.",
+        ringkasanMateri: "Kaidah teks prosedur, kalimat imperatif, langkah terurut, dan pembuatan panduan kreatif.",
         tujuanPembelajaran: "1. Peserta didik mampu menelaah struktur dan kaidah kebahasaan teks prosedur secara teliti.\n2. Peserta didik mampu merancang dan menyajikan teks prosedur kreatif dalam bentuk panduan visual atau video.",
         alokasiWaktu: "4 x 45 JP",
         jumlahPertemuan: "2",
@@ -190,14 +194,114 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
     ];
   }
 
-  // Default umum untuk Mapel IPA, IPS, PAI, dll
+  // 4. IPA (Ilmu Pengetahuan Alam)
+  if (s.includes("ipa") || s.includes("sains") || s.includes("biologi") || s.includes("fisika")) {
+    return [
+      {
+        id: "bab-1",
+        nomor: 1,
+        judulBab: "Bab 1: Hakikat Sains, Pengukuran, dan Metode Ilmiah",
+        elemenName: "Pemahaman IPA & Keterampilan Proses",
+        ringkasanMateri: "Pengukuran besaran fisika, keselamatan kerja lab, perumusan hipotesis, dan eksperimen ilmiah.",
+        tujuanPembelajaran: "1. Peserta didik mampu merancang penyelidikan ilmiah untuk memecahkan masalah kontekstual dengan metode ilmiah.\n2. Peserta didik mampu melakukan pengukuran besaran turunan dengan alat ukur presisi secara teliti.",
+        alokasiWaktu: "6 x 45 JP",
+        jumlahPertemuan: "3",
+        semester: "1"
+      },
+      {
+        id: "bab-2",
+        nomor: 2,
+        judulBab: "Bab 2: Zat, Wujud, dan Perubahan Fisika & Kimia",
+        elemenName: "Zat dan Perubahannya",
+        ringkasanMateri: "Model partikel zat, kerapatan (massa jenis), perubahan wujud, serta pemisahan campuran.",
+        tujuanPembelajaran: "1. Peserta didik mampu menjelaskan model partikel zat padat, cair, dan gas serta fenomena perubahan wujud zat.\n2. Peserta didik mampu menganalisis konsep massa jenis untuk menjelaskan fenomena benda terapung dan tenggelam.",
+        alokasiWaktu: "4 x 45 JP",
+        jumlahPertemuan: "2",
+        semester: "1"
+      },
+      {
+        id: "bab-3",
+        nomor: 3,
+        judulBab: "Bab 3: Suhu, Kalor, dan Mekanisme Perpindahan Energi",
+        elemenName: "Energi dan Perubahannya",
+        ringkasanMateri: "Konversi skala termometer, asas Black, konduksi, konveksi, radiasi, serta isolasi termal ramah lingkungan.",
+        tujuanPembelajaran: "1. Peserta didik mampu membedakan konsep suhu dan kalor serta menganalisis pengaruh kalor terhadap perubahan wujud zat.\n2. Peserta didik mampu merancang purwarupa isolator panas sederhana untuk melestarikan energi.",
+        alokasiWaktu: "6 x 45 JP",
+        jumlahPertemuan: "3",
+        semester: "2"
+      },
+      {
+        id: "bab-4",
+        nomor: 4,
+        judulBab: "Bab 4: Ekosistem, Rantai Makanan, dan Konservasi Keanekaragaman Hayati",
+        elemenName: "Makhluk Hidup dan Lingkungannya",
+        ringkasanMateri: "Interaksi antar-komponen ekosistem, jaring-jaring makanan, pencemaran lingkungan, dan upaya konservasi.",
+        tujuanPembelajaran: "1. Peserta didik mampu menganalisis interaksi biotik dan abiotik dalam ekosistem lokal.\n2. Peserta didik mampu mengajukan gagasan solutif terhadap permasalahan pencemaran lingkungan di sekitar sekolah.",
+        alokasiWaktu: "6 x 45 JP",
+        jumlahPertemuan: "3",
+        semester: "2"
+      }
+    ];
+  }
+
+  // 5. Bahasa Inggris
+  if (s.includes("inggris") || s.includes("english")) {
+    return [
+      {
+        id: "bab-1",
+        nomor: 1,
+        judulBab: "Chapter 1: About Me and People Around Us (Descriptive Text)",
+        elemenName: "Listening and Speaking",
+        ringkasanMateri: "Self-introduction, greetings, family descriptions, personality adjectives, and simple present tense.",
+        tujuanPembelajaran: "1. Students are able to interactively introduce themselves and describe personalities using appropriate expressions.\n2. Students are able to produce short descriptive spoken and written paragraphs about their role models.",
+        alokasiWaktu: "6 x 45 JP",
+        jumlahPertemuan: "3",
+        semester: "1"
+      },
+      {
+        id: "bab-2",
+        nomor: 2,
+        judulBab: "Chapter 2: Daily Routines and Time Management",
+        elemenName: "Reading and Viewing",
+        ringkasanMateri: "Adverbs of frequency, telling the time, daily habits, and healthy lifestyle routines.",
+        tujuanPembelajaran: "1. Students are able to comprehend and organize information regarding daily schedules and habits.\n2. Students are able to write a personal weekly planner using correct adverbs of frequency.",
+        alokasiWaktu: "4 x 45 JP",
+        jumlahPertemuan: "2",
+        semester: "1"
+      },
+      {
+        id: "bab-3",
+        nomor: 3,
+        judulBab: "Chapter 3: Delicious Recipes and Procedures (Procedure Text)",
+        elemenName: "Writing and Presenting",
+        ringkasanMateri: "Imperative sentences, action verbs, cooking connectors (first, then, finally), and traditional culinary steps.",
+        tujuanPembelajaran: "1. Students are able to identify generic structure and linguistic features of procedure texts.\n2. Students are able to create and present a step-by-step visual tutorial of local traditional cuisine.",
+        alokasiWaktu: "6 x 45 JP",
+        jumlahPertemuan: "3",
+        semester: "2"
+      },
+      {
+        id: "bab-4",
+        nomor: 4,
+        judulBab: "Chapter 4: Memorable Journeys and Past Experiences (Recount Text)",
+        elemenName: "Listening and Writing",
+        ringkasanMateri: "Past tense, chronological connectors, travel journals, and personal reflection.",
+        tujuanPembelajaran: "1. Students are able to recount past events chronologically with correct past tense forms.\n2. Students are able to compose an engaging personal diary entry about their school trip experience.",
+        alokasiWaktu: "6 x 45 JP",
+        jumlahPertemuan: "3",
+        semester: "2"
+      }
+    ];
+  }
+
+  // 6. Default umum untuk Mapel Lain (IPS, PAI, PJOK, Seni, dll)
   return [
     {
       id: "bab-1",
       nomor: 1,
-      judulBab: `Bab 1: Konsep Fundamental & Esensial ${subject}`,
+      judulBab: `Bab 1: Konsep Fundamental & Karakteristik Esensial ${subject}`,
       elemenName: "Elemen 1",
-      ringkasanMateri: `Pengenalan dasar, struktur materi pokok, dan observasi fenomena faktual dalam bidang ${subject}.`,
+      ringkasanMateri: `Pengenalan dasar, pemetaan konsep materi pokok, dan observasi fenomena faktual dalam bidang ${subject}.`,
       tujuanPembelajaran: `1. Peserta didik mampu menganalisis konsep dasar dan definisi kontekstual materi ${subject} secara komprehensif.\n2. Peserta didik mampu menghubungkan konsep dasar dengan fenomena nyata dalam kehidupan sehari-hari dengan nalar kritis.`,
       alokasiWaktu: "4 x 45 JP",
       jumlahPertemuan: "2",
@@ -208,7 +312,7 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
       nomor: 2,
       judulBab: `Bab 2: Analisis Masalah, Investigasi, dan Metode Ilmiah ${subject}`,
       elemenName: "Elemen 2",
-      ringkasanMateri: `Identifikasi masalah, pengumpulan data terstruktur, diskusi kolaboratif, dan pembuktian hipotesis.`,
+      ringkasanMateri: `Identifikasi masalah kontekstual, pengumpulan data terstruktur, diskusi kolaboratif, dan pembuktian hipotesis.`,
       tujuanPembelajaran: `1. Peserta didik mampu merumuskan hipotesis dan melakukan investigasi ilmiah terbimbing dalam topik ${subject}.\n2. Peserta didik mampu mengolah data hasil eksplorasi serta menyajikan argumen berbasis bukti.`,
       alokasiWaktu: "6 x 45 JP",
       jumlahPertemuan: "3",
@@ -219,7 +323,7 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
       nomor: 3,
       judulBab: `Bab 3: Pendalaman Konsep Lanjutan dan Studi Kasus Interdisipliner`,
       elemenName: "Elemen 3",
-      ringkasanMateri: `Penerapan konsep pada tingkat lanjutan, perbandingan studi kasus nyata, dan kearifan lokal.`,
+      ringkasanMateri: `Penerapan konsep pada tingkat lanjutan, perbandingan studi kasus nyata, dan integrasi kearifan lokal.`,
       tujuanPembelajaran: `1. Peserta didik mampu mengevaluasi berbagai alternatif solusi atas permasalahan kompleks dalam ${subject}.\n2. Peserta didik mampu mengintegrasikan nilai etika, kepedulian lingkungan, dan kolaborasi dalam pemecahan masalah.`,
       alokasiWaktu: "6 x 45 JP",
       jumlahPertemuan: "3",
@@ -240,9 +344,12 @@ export function getDefaultBabList(subject: string = "Matematika", level: string 
 }
 
 /**
- * Ekstraksi daftar bab secara cerdas dari data form Generator Perangkat Ajar AI
+ * Ekstraksi daftar bab secara cerdas dari data form dan dokumen yang digenerate oleh AI
  */
-export function extractSyncDataFromPerangkat(formData: any): PerangkatAjarSyncData {
+export function extractSyncDataFromPerangkat(
+  formData: any,
+  generatedDocs?: Record<string, string>
+): PerangkatAjarSyncData {
   const subject = formData?.subject || "Matematika";
   const singkatanMapel = formData?.singkatanMapel || "MTK";
   const level = formData?.level || "Fase D / Kelas VIII";
@@ -282,12 +389,11 @@ export function extractSyncDataFromPerangkat(formData: any): PerangkatAjarSyncDa
     kelas = "XII";
   }
 
-  // Parse Elemen CP
-  const rawCpElemen = formData?.cpElemen || "";
   let daftarBab: PerangkatBabItem[] = [];
 
+  // Strategi 1: Parse Elemen CP dari formData
+  const rawCpElemen = formData?.cpElemen || "";
   if (rawCpElemen.trim()) {
-    // Split by "Elemen" or double newline
     const blocks = rawCpElemen
       .split(/(?=Elemen\s+\d+|Elemen\s+[A-Za-z]+:)/i)
       .map((b: string) => b.trim())
@@ -299,27 +405,27 @@ export function extractSyncDataFromPerangkat(formData: any): PerangkatAjarSyncDa
         const firstLine = lines[0] || `Elemen ${idx + 1}`;
         const remainingText = lines.slice(1).join(" ") || block;
 
-        // Extract title: "Elemen 1 — Bilangan: Deskripsi..." -> "Bab 1: Bilangan"
+        // Bersihkan judul
         let judul = firstLine.replace(/^Elemen\s+\d+\s*[-—:]*\s*/i, "").trim();
         if (judul.includes(":")) {
           judul = judul.split(":")[0].trim();
         }
         if (!judul) {
-          judul = `Materi Esensial ${idx + 1}`;
+          judul = `Materi Pokok ${idx + 1}`;
         }
 
         const babNomor = idx + 1;
         const judulBabLengkap = `Bab ${babNomor}: ${judul}`;
         const sem = babNomor <= Math.ceil(blocks.length / 2) ? "1" : "2";
 
-        const tpRumusan = `1. Peserta didik mampu menganalisis dan memahami konsep dasar ${judul} secara mendalam (Deep Learning Mindful).\n2. Peserta didik mampu menerapkan konsep ${judul} dalam pemecahan masalah kontekstual dan karya nyata secara mandiri dan bernalar kritis.`;
+        const tpRumusan = `1. Peserta didik mampu memahami dan menguasai konsep fundamental ${judul} secara mendalam (Deep Learning Mindful).\n2. Peserta didik mampu menerapkan konsep ${judul} dalam pemecahan masalah kontekstual dan menghasilkan karya nyata dengan bernalar kritis dan mandiri.`;
 
         return {
           id: `bab-${babNomor}`,
           nomor: babNomor,
           judulBab: judulBabLengkap,
           elemenName: judul,
-          ringkasanMateri: remainingText.slice(0, 160) + (remainingText.length > 160 ? "..." : ""),
+          ringkasanMateri: remainingText.slice(0, 180) + (remainingText.length > 180 ? "..." : ""),
           tujuanPembelajaran: tpRumusan,
           alokasiWaktu: "4 x 45 JP",
           jumlahPertemuan: "2",
@@ -329,7 +435,7 @@ export function extractSyncDataFromPerangkat(formData: any): PerangkatAjarSyncDa
     }
   }
 
-  // Jika tidak ada bab yang berhasil diparse dari cpElemen, gunakan default mapel
+  // Strategi 2: Jika belum ada bab dari cpElemen, gunakan default mapel
   if (daftarBab.length === 0) {
     daftarBab = getDefaultBabList(subject, level);
   }
@@ -355,7 +461,7 @@ export function extractSyncDataFromPerangkat(formData: any): PerangkatAjarSyncDa
 }
 
 /**
- * Menyimpan data sinkronisasi ke localStorage dan memicu custom event
+ * Menyimpan data sinkronisasi ke localStorage dan memicu custom event real-time
  */
 export function savePerangkatSyncData(data: PerangkatAjarSyncData): void {
   try {

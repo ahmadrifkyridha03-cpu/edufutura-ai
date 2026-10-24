@@ -29,6 +29,7 @@ import { savePerangkatSyncData, extractSyncDataFromPerangkat } from "../utils/pe
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
+  onNavigateToModulAjar?: () => void;
 }
 
 const DEFAULT_RME_GANJIL: RmeMonthItem[] = [
@@ -65,7 +66,7 @@ const DEFAULT_AGENDA_SEKOLAH: AgendaSekolahItem[] = [
 
 const DEFAULT_CATATAN_KALENDER = "Kalender Pendidikan berpedoman pada Keputusan Kepala Dinas Pendidikan Provinsi/Kab/Kota & Kebijakan Kurikulum Sekolah. Kegiatan Proyek Penguatan Profil Pelajar (P5) dilaksanakan secara blok/terpadu pada pekan terjadwal.";
 
-export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIViewProps> = ({ config }) => {
+export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIViewProps> = ({ config, onNavigateToModulAjar }) => {
   const [activeDoc, setActiveDoc] = useState<"rme" | "analisis_cp" | "tp" | "atp" | "prota" | "prosem" | "kktp">("rme");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState("");
@@ -542,6 +543,29 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
     };
   };
 
+  // Real-time synchronization whenever subject, level, or cpElemen is updated
+  React.useEffect(() => {
+    try {
+      const payload = getPayloadFormData();
+      savePerangkatSyncData(extractSyncDataFromPerangkat(payload, generatedDocs));
+    } catch (err) {
+      console.warn("Auto-sync update notice:", err);
+    }
+  }, [formData.subject, formData.singkatanMapel, formData.level, formData.year, formData.school, formData.cpElemen]);
+
+  const handleJumpToModulAjar = () => {
+    try {
+      const payload = getPayloadFormData();
+      savePerangkatSyncData(extractSyncDataFromPerangkat(payload, generatedDocs));
+      notifySimpanSuccess("Data Perangkat Ajar & Daftar Bab berhasil disinkronkan ke Modul Ajar AI!");
+    } catch (e) {
+      console.warn("Sync jump notice:", e);
+    }
+    if (onNavigateToModulAjar) {
+      onNavigateToModulAjar();
+    }
+  };
+
   const handleGenerateDoc = async (targetType: string) => {
     setIsGenerating(true);
     const docMeta = docTypeList.find((d) => d.id === targetType);
@@ -909,7 +933,15 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
               className="bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-extrabold px-5 py-3 rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center space-x-2 text-xs md:text-sm cursor-pointer disabled:opacity-50 font-display"
             >
               <Sparkles className="w-4 h-4 text-cyan-200" />
-              <span>Generate Semua 6 Dokumen</span>
+              <span>Generate Semua 7 Dokumen (AI)</span>
+            </button>
+            <button
+              onClick={handleJumpToModulAjar}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-4 py-3 rounded-xl shadow-[0_0_18px_rgba(16,185,129,0.35)] transition-all flex items-center justify-center space-x-2 text-xs md:text-sm cursor-pointer font-display"
+              title="Kirim dan sinkronkan hasil bab & tujuan pembelajaran ke Modul Ajar AI"
+            >
+              <Wand2 className="w-4 h-4 text-emerald-200" />
+              <span>Susun Modul Ajar AI →</span>
             </button>
           </div>
         </div>
@@ -1566,6 +1598,14 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
             >
               <Download className="w-4 h-4" />
               <span>Unduh Word (.doc)</span>
+            </button>
+            <button
+              onClick={handleJumpToModulAjar}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs transition-all flex items-center space-x-1.5 shadow-[0_0_15px_rgba(245,158,11,0.35)] cursor-pointer font-display"
+              title="Kirim bab & tujuan pembelajaran dokumen ini ke Modul Ajar AI"
+            >
+              <Wand2 className="w-4 h-4 text-slate-950" />
+              <span>Susun Modul Ajar AI →</span>
             </button>
           </div>
         </div>

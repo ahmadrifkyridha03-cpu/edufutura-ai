@@ -465,7 +465,12 @@ export default function App() {
 
             {activeTab === "perangkat_kbc" && <PerangkatAjarKBCView config={config} />}
 
-            {activeTab === "perangkat_ai" && <GeneratorPerangkatAjarAIView config={config} />}
+            {activeTab === "perangkat_ai" && (
+              <GeneratorPerangkatAjarAIView 
+                config={config} 
+                onNavigateToModulAjar={() => setActiveTab("modulai")}
+              />
+            )}
 
             {activeTab === "modulai" && <ModulAjarAIView config={config} />}
 

@@ -117,7 +117,6 @@ export interface ModulFormState {
   waktu: string;
   mataPelajaran: string;
   topik: string;
-  subTopik?: string;
   jumlahPertemuan: string;
   model: string;
   metode?: string;
