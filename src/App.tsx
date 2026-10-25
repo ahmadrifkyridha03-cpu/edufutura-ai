@@ -48,7 +48,14 @@ const PengaturanView = lazy(() => import("./components/PengaturanView").then(m =
 const ResetDatabaseView = lazy(() => import("./components/ResetDatabaseView").then(m => ({ default: m.ResetDatabaseView })));
 
 
+import { LoginView } from "./components/LoginView";
+import Swal from "./lib/swal";
+
 import { 
+  subscribeAuthUser,
+  logoutUser,
+  setActiveUserId,
+  getActiveUserId,
   subscribeCollection, 
   subscribePengaturan, 
   batchSaveDocuments, 
@@ -66,7 +73,8 @@ import {
   JurnalAgenda, 
   SiswaBimbingan, 
   BimbinganWali, 
-  Pengaturan 
+  Pengaturan,
+  GuruUser
 } from "./types";
 
 const DEFAULT_CONFIG: Pengaturan = {
@@ -134,6 +142,10 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // Authentication & Active Teacher State
+  const [currentUser, setCurrentUser] = useState<GuruUser | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+
   // Firestore Data Collections
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [mapelList, setMapelList] = useState<Mapel[]>([]);
@@ -145,8 +157,39 @@ export default function App() {
   const [bimbinganList, setBimbinganList] = useState<BimbinganWali[]>([]);
   const [config, setConfig] = useState<Pengaturan>(DEFAULT_CONFIG);
 
-  // Subscribe to Firebase real-time collections
+  // Initial Auth Session Listener
   useEffect(() => {
+    const unsubscribeAuth = subscribeAuthUser((user) => {
+      setCurrentUser(user);
+      if (user) {
+        setActiveUserId(user.uid);
+      } else {
+        setActiveUserId(null);
+      }
+      setAuthLoading(false);
+    });
+
+    return () => {
+      unsubscribeAuth();
+    };
+  }, []);
+
+  // Subscribe to Firebase real-time collections scoped to active teacher
+  useEffect(() => {
+    if (!currentUser) {
+      setSiswaList([]);
+      setMapelList([]);
+      setJadwalList([]);
+      setAbsensiList([]);
+      setNilaiList([]);
+      setAgendaList([]);
+      setSiswaBimbinganList([]);
+      setBimbinganList([]);
+      setIsConnected(false);
+      return;
+    }
+
+    setActiveUserId(currentUser.uid);
     let unsubs: Array<() => void> = [];
 
     unsubs.push(subscribeCollection<Siswa>(COLLECTIONS.SISWA, (data) => {
@@ -185,10 +228,18 @@ export default function App() {
     unsubs.push(subscribePengaturan((cfg) => {
       if (cfg && Object.keys(cfg).length > 0) {
         setConfig((prev) => ({ ...prev, ...cfg }));
+      } else {
+        // Fallback or seed with registered teacher info
+        setConfig((prev) => ({
+          ...prev,
+          Nama_Guru: currentUser.displayName || prev.Nama_Guru,
+          NIP_Guru: currentUser.nip || prev.NIP_Guru,
+          Nama_Sekolah: currentUser.sekolah || prev.Nama_Sekolah,
+        }));
       }
     }));
 
-    // Auto-sync any existing local storage data from laptop to Firestore so other devices (e.g. phone) receive it
+    // Auto-sync any existing local storage data for this teacher
     syncAllLocalDataToFirestore().catch((err) => {
       console.warn("Background auto-sync notice:", err);
     });
@@ -196,14 +247,16 @@ export default function App() {
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
-  }, []);
+  }, [currentUser?.uid]);
 
-  // Seed sample initial data if database is empty on first boot
+  // Seed sample initial data if database is empty on first boot for this teacher
   useEffect(() => {
+    if (!currentUser || !isConnected) return;
+
     const seedInitialData = async () => {
       // Do not re-seed sample data if database was explicitly cleared/wiped by user
       if (
-        localStorage.getItem("edadmin_database_cleared") === "true" ||
+        localStorage.getItem(`edadmin_database_cleared_${currentUser.uid}`) === "true" ||
         config?.isDatabaseCleared === true
       ) {
         return;
@@ -223,7 +276,7 @@ export default function App() {
       // Seed Mapel if empty
       if (mapelList.length === 0 && isConnected) {
         const sampleMapel: Mapel[] = [
-          { id: "m1", namaMapel: "Informatika", semester: "Ganjil", tahunAjaran: "2026/2027" },
+          { id: "m1", namaMapel: currentUser.mapelUtama || "Informatika", semester: "Ganjil", tahunAjaran: "2026/2027" },
           { id: "m2", namaMapel: "Matematika", semester: "Ganjil", tahunAjaran: "2026/2027" },
           { id: "m3", namaMapel: "Bahasa Indonesia", semester: "Ganjil", tahunAjaran: "2026/2027" },
           { id: "m4", namaMapel: "IPA Terpadu", semester: "Ganjil", tahunAjaran: "2026/2027" }
@@ -234,20 +287,25 @@ export default function App() {
       // Seed Jadwal if empty
       if (jadwalList.length === 0 && isConnected) {
         const sampleJadwal: Jadwal[] = [
-          { id: "j1", hari: "Senin", jam: "07:30 - 09:00", kelas: "VII A", mapel: "Informatika" },
-          { id: "j2", hari: "Selasa", jam: "09:15 - 10:45", kelas: "VII B", mapel: "Informatika" }
+          { id: "j1", hari: "Senin", jam: "07:30 - 09:00", kelas: "VII A", mapel: currentUser.mapelUtama || "Informatika" },
+          { id: "j2", hari: "Selasa", jam: "09:15 - 10:45", kelas: "VII B", mapel: currentUser.mapelUtama || "Informatika" }
         ];
         await batchSaveDocuments(COLLECTIONS.JADWAL, sampleJadwal);
       }
 
       // Save initial config if empty
       if (!config.Nama_Guru && isConnected) {
-        await savePengaturan(DEFAULT_CONFIG);
+        await savePengaturan({
+          ...DEFAULT_CONFIG,
+          Nama_Guru: currentUser.displayName || DEFAULT_CONFIG.Nama_Guru,
+          NIP_Guru: currentUser.nip || DEFAULT_CONFIG.NIP_Guru,
+          Nama_Sekolah: currentUser.sekolah || DEFAULT_CONFIG.Nama_Sekolah,
+        });
       }
     };
 
     seedInitialData();
-  }, [isConnected, siswaList.length, mapelList.length, jadwalList.length, config.Nama_Guru, config.isDatabaseCleared]);
+  }, [currentUser?.uid, isConnected, siswaList.length, mapelList.length, jadwalList.length, config.Nama_Guru, config.isDatabaseCleared]);
 
   const handleSuccessReset = () => {
     setConfig((prev) => ({ ...prev, isDatabaseCleared: true }));
@@ -261,6 +319,69 @@ export default function App() {
     setBimbinganList([]);
   };
 
+  const handleLogout = async () => {
+    const result = await Swal.fire({
+      title: "Keluar Akun Guru?",
+      text: "Sesi kerja Anda saat ini akan ditutup dengan aman.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Ya, Keluar Akun",
+      cancelButtonText: "Batal",
+      background: isDarkMode ? "#0f172a" : "#ffffff",
+      color: isDarkMode ? "#f8fafc" : "#0f172a",
+    });
+
+    if (result.isConfirmed) {
+      await logoutUser();
+      setCurrentUser(null);
+      setActiveUserId(null);
+      Swal.fire({
+        icon: "success",
+        title: "Berhasil Keluar",
+        text: "Sampai jumpa kembali di EduFutura AI!",
+        timer: 1600,
+        showConfirmButton: false,
+        background: isDarkMode ? "#0f172a" : "#ffffff",
+        color: isDarkMode ? "#f8fafc" : "#0f172a",
+      });
+    }
+  };
+
+  // Auth Loading State
+  if (authLoading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center bg-slate-950 text-white font-sans ${isDarkMode ? "dark" : ""}`}>
+        <div className="flex flex-col items-center space-y-4 animate-pulse">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-[0_0_30px_rgba(6,182,212,0.5)]">
+            <GraduationCap className="w-9 h-9 text-cyan-200" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-300 via-white to-violet-300 bg-clip-text text-transparent">
+              EduFutura AI
+            </h2>
+            <p className="text-xs text-slate-400 font-mono mt-1">Memeriksa Sesi Guru Terenkripsi...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Unauthenticated: Render Futuristic Teacher Login & Registration Portal
+  if (!currentUser) {
+    return (
+      <LoginView
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setActiveUserId(user.uid);
+        }}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+      />
+    );
+  }
+
   return (
     <div className={`min-h-screen flex bg-slate-50 dark:bg-[#030712] text-slate-800 dark:text-slate-100 font-sans transition-colors relative overflow-hidden ${isDarkMode ? "dark" : ""}`}>
       {/* Ambient Cybernetic Gradient Orbs */}
@@ -273,6 +394,8 @@ export default function App() {
         setActiveTab={setActiveTab}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Workspace */}
@@ -285,6 +408,9 @@ export default function App() {
           onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
           isConnected={isConnected}
           config={config}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onOpenSettings={() => setActiveTab("pengaturan")}
           onOpenWelcomeGuide={() => setIsWelcomeGuideOpen(true)}
         />
 

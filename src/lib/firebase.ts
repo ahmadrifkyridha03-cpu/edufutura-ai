@@ -5,11 +5,24 @@ import {
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   deleteDoc, 
   onSnapshot, 
   getDocs,
   writeBatch
 } from "firebase/firestore";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  updateProfile,
+  sendPasswordResetEmail,
+  User as FirebaseUser
+} from "firebase/auth";
 import firebaseConfigData from "../../firebase-applet-config.json";
 import { 
   Siswa, 
@@ -20,7 +33,8 @@ import {
   JurnalAgenda, 
   SiswaBimbingan, 
   BimbinganWali, 
-  Pengaturan 
+  Pengaturan,
+  GuruUser
 } from "../types";
 
 // Firebase Configuration dynamically resolved from Environment Variables
@@ -33,28 +47,19 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_PENGATURAN_FIREBASE_APP_ID || import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigData.appId
 };
 
-// Initialize Firebase
+// Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Firebase Auth
+export const auth = getAuth(app);
 
 // Use explicit firestoreDatabaseId with auto detect long polling for iframe stability
 const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigData.firestoreDatabaseId || "(default)";
 
-// Original Owner & Master Database Identifiers
-const PRIMARY_DATABASE_ID = firebaseConfigData.firestoreDatabaseId || "ai-studio-aplikasiguruai-962ea492-3615-4bc9-9964-b191b29c1a68";
-const PRIMARY_APPLET_ID = "962ea492-3615-4bc9-9964-b191b29c1a68";
-
-/**
- * Detects whether the application is running in a remixed / cloned workspace environment.
- * In this application, Firebase is fully provisioned with its own dedicated database.
- */
 export function isRemixInstance(): boolean {
   return false;
 }
 
-/**
- * Returns true only if database mutations must be strictly isolated to localStorage.
- * Since this applet is provisioned with its dedicated Firestore database, this is disabled.
- */
 function isIsolatedRemix(): boolean {
   return false;
 }
@@ -84,40 +89,90 @@ export const COLLECTIONS = {
   JURNAL_AGENDA: "jurnal_agenda",
   SISWA_BIMBINGAN: "siswa_bimbingan",
   BIMBINGAN_WALI: "bimbingan_wali",
-  PENGATURAN: "pengaturan"
+  PENGATURAN: "pengaturan",
+  USERS: "users"
 };
 
-// Helpers for isolated local storage fallback when running in a remixed environment
-export function getRemixStorage<T>(collectionName: string): T[] {
+// ============================================================================
+// Multi-Teacher Active Workspace Tracking & Isolation Helpers
+// ============================================================================
+let currentActiveUserId: string = (typeof window !== "undefined" ? localStorage.getItem("edadmin_active_uid") : null) || "";
+
+export function setActiveUserId(uid: string) {
+  currentActiveUserId = uid;
+  if (typeof window !== "undefined") {
+    if (uid) {
+      localStorage.setItem("edadmin_active_uid", uid);
+    } else {
+      localStorage.removeItem("edadmin_active_uid");
+    }
+  }
+}
+
+export function getActiveUserId(): string {
+  return currentActiveUserId;
+}
+
+export function getScopedStorageKey(collectionName: string, userId?: string): string {
+  const uid = userId !== undefined ? userId : currentActiveUserId;
+  return uid ? `edadmin_teacher_${uid}_${collectionName}` : `edadmin_remix_db_${collectionName}`;
+}
+
+export function getFirestoreColRef(collectionName: string, userId?: string) {
+  const uid = userId !== undefined ? userId : currentActiveUserId;
+  if (uid) {
+    return collection(firestore, "users", uid, collectionName);
+  }
+  return collection(firestore, collectionName);
+}
+
+export function getFirestoreDocRef(collectionName: string, docId: string, userId?: string) {
+  const uid = userId !== undefined ? userId : currentActiveUserId;
+  if (uid) {
+    return doc(firestore, "users", uid, collectionName, docId);
+  }
+  return doc(firestore, collectionName, docId);
+}
+
+// Helpers for isolated local storage fallback
+export function getRemixStorage<T>(collectionName: string, userId?: string): T[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(`edadmin_remix_db_${collectionName}`);
+    const key = getScopedStorageKey(collectionName, userId);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function setRemixStorage<T>(collectionName: string, data: T[]) {
+export function setRemixStorage<T>(collectionName: string, data: T[], userId?: string) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(`edadmin_remix_db_${collectionName}`, JSON.stringify(data));
+    const key = getScopedStorageKey(collectionName, userId);
+    localStorage.setItem(key, JSON.stringify(data));
     window.dispatchEvent(new CustomEvent(`edadmin_remix_db_update_${collectionName}`, { detail: data }));
   } catch (e) {
     console.error("Error writing remix database storage:", e);
   }
 }
 
-// Generic Realtime Subscription with offline fallback & auto-migration
-export function subscribeCollection<T>(collectionName: string, callback: (data: T[]) => void) {
+// Generic Realtime Subscription with teacher isolation & offline fallback
+export function subscribeCollection<T>(
+  collectionName: string, 
+  callback: (data: T[]) => void,
+  userId?: string
+) {
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
+
   // 1. Initial immediate emission from local cache to prevent blank flicker
-  const initialCached = getRemixStorage<T>(collectionName);
+  const initialCached = getRemixStorage<T>(collectionName, targetUid);
   if (initialCached.length > 0) {
     callback(initialCached);
   }
 
-  // 2. Real-time subscription to Cloud Firestore
-  const colRef = collection(firestore, collectionName);
+  // 2. Real-time subscription to Cloud Firestore (per-user subcollection or root)
+  const colRef = getFirestoreColRef(collectionName, targetUid);
   return onSnapshot(
     colRef, 
     (snapshot) => {
@@ -128,7 +183,7 @@ export function subscribeCollection<T>(collectionName: string, callback: (data: 
 
       // Auto-migrate: If Firestore is currently empty, but local cache has items, push to Firestore
       if (items.length === 0 && initialCached.length > 0) {
-        batchSaveDocuments(collectionName, initialCached as any[]).catch((err) => {
+        batchSaveDocuments(collectionName, initialCached as any[], targetUid).catch((err) => {
           console.warn(`Auto-migration notice on ${collectionName}:`, err);
         });
         callback(initialCached);
@@ -136,34 +191,22 @@ export function subscribeCollection<T>(collectionName: string, callback: (data: 
       }
 
       // Sync local cache
-      setRemixStorage(collectionName, items);
+      setRemixStorage(collectionName, items, targetUid);
       callback(items);
     },
     (error) => {
       console.warn(`Firestore subscription notice on ${collectionName}:`, error?.message || error);
-      // Fallback to local storage if Firestore connection encounters an issue
-      callback(getRemixStorage<T>(collectionName));
+      callback(getRemixStorage<T>(collectionName, targetUid));
     }
   );
 }
 
-// Single Document Save/Update with authorization guard
-export async function saveDocument(collectionName: string, id: string, data: Record<string, any>) {
-  if (isIsolatedRemix()) {
-    const current = getRemixStorage<any>(collectionName);
-    const idx = current.findIndex((item) => item.id === id);
-    const updatedItem = { ...(idx >= 0 ? current[idx] : {}), ...data, id, updatedAt: Date.now() };
-    if (idx >= 0) {
-      current[idx] = updatedItem;
-    } else {
-      current.push(updatedItem);
-    }
-    setRemixStorage(collectionName, current);
-    return;
-  }
+// Single Document Save/Update with authorization guard & user scoping
+export async function saveDocument(collectionName: string, id: string, data: Record<string, any>, userId?: string) {
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
 
   // Update local cache immediately for zero latency
-  const current = getRemixStorage<any>(collectionName);
+  const current = getRemixStorage<any>(collectionName, targetUid);
   const idx = current.findIndex((item) => item.id === id);
   const updatedItem = { ...(idx >= 0 ? current[idx] : {}), ...data, id, updatedAt: Date.now() };
   if (idx >= 0) {
@@ -171,10 +214,10 @@ export async function saveDocument(collectionName: string, id: string, data: Rec
   } else {
     current.push(updatedItem);
   }
-  setRemixStorage(collectionName, current);
+  setRemixStorage(collectionName, current, targetUid);
 
   try {
-    const docRef = doc(firestore, collectionName, id);
+    const docRef = getFirestoreDocRef(collectionName, id, targetUid);
     await setDoc(docRef, { ...data, updatedAt: Date.now() }, { merge: true });
   } catch (err: any) {
     console.error(`Error saving document in ${collectionName}:`, err);
@@ -182,25 +225,21 @@ export async function saveDocument(collectionName: string, id: string, data: Rec
   }
 }
 
-// Single Document Delete with authorization guard
-export async function deleteDocument(collectionName: string, id: string) {
-  // Always update local remix storage first so cached state clears immediately
-  const current = getRemixStorage<any>(collectionName);
+// Single Document Delete with authorization guard & user scoping
+export async function deleteDocument(collectionName: string, id: string, userId?: string) {
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
+
+  const current = getRemixStorage<any>(collectionName, targetUid);
   if (current && current.length > 0) {
     const filtered = current.filter((item) => item.id !== id);
-    setRemixStorage(collectionName, filtered);
-  }
-
-  if (isIsolatedRemix()) {
-    return;
+    setRemixStorage(collectionName, filtered, targetUid);
   }
 
   try {
-    const docRef = doc(firestore, collectionName, id);
+    const docRef = getFirestoreDocRef(collectionName, id, targetUid);
     await deleteDoc(docRef);
   } catch (err: any) {
     console.error(`Error deleting document in ${collectionName}:`, err);
-    // Ignore error if document was already deleted or not found
     if (err?.code === "not-found" || err?.message?.includes("not found")) {
       return;
     }
@@ -208,27 +247,17 @@ export async function deleteDocument(collectionName: string, id: string) {
   }
 }
 
-// Batch Save Documents with authorization guard
-export async function batchSaveDocuments(collectionName: string, items: Array<{ id: string; [key: string]: any }>) {
+// Batch Save Documents with authorization guard & user scoping
+export async function batchSaveDocuments(
+  collectionName: string, 
+  items: Array<{ id: string; [key: string]: any }>,
+  userId?: string
+) {
   if (!items || items.length === 0) return;
-  
-  if (isIsolatedRemix()) {
-    const current = getRemixStorage<any>(collectionName);
-    items.forEach((item) => {
-      const idx = current.findIndex((existing) => existing.id === item.id);
-      const updatedItem = { ...(idx >= 0 ? current[idx] : {}), ...item, updatedAt: Date.now() };
-      if (idx >= 0) {
-        current[idx] = updatedItem;
-      } else {
-        current.push(updatedItem);
-      }
-    });
-    setRemixStorage(collectionName, current);
-    return;
-  }
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
 
   // Update local cache immediately for zero latency
-  const current = getRemixStorage<any>(collectionName);
+  const current = getRemixStorage<any>(collectionName, targetUid);
   items.forEach((item) => {
     const idx = current.findIndex((existing) => existing.id === item.id);
     const updatedItem = { ...(idx >= 0 ? current[idx] : {}), ...item, updatedAt: Date.now() };
@@ -238,12 +267,12 @@ export async function batchSaveDocuments(collectionName: string, items: Array<{ 
       current.push(updatedItem);
     }
   });
-  setRemixStorage(collectionName, current);
+  setRemixStorage(collectionName, current, targetUid);
 
   try {
     const batch = writeBatch(firestore);
     items.forEach((item) => {
-      const docRef = doc(firestore, collectionName, item.id);
+      const docRef = getFirestoreDocRef(collectionName, item.id, targetUid);
       batch.set(docRef, { ...item, updatedAt: Date.now() }, { merge: true });
     });
     await batch.commit();
@@ -253,25 +282,22 @@ export async function batchSaveDocuments(collectionName: string, items: Array<{ 
   }
 }
 
-// Batch Delete Documents with authorization guard
-export async function batchDeleteDocuments(collectionName: string, ids: string[]) {
+// Batch Delete Documents with authorization guard & user scoping
+export async function batchDeleteDocuments(collectionName: string, ids: string[], userId?: string) {
   if (!ids || ids.length === 0) return;
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
 
-  const current = getRemixStorage<any>(collectionName);
+  const current = getRemixStorage<any>(collectionName, targetUid);
   if (current && current.length > 0) {
     const idSet = new Set(ids);
     const filtered = current.filter((item) => !idSet.has(item.id));
-    setRemixStorage(collectionName, filtered);
-  }
-
-  if (isIsolatedRemix()) {
-    return;
+    setRemixStorage(collectionName, filtered, targetUid);
   }
 
   try {
     const batch = writeBatch(firestore);
     ids.forEach((id) => {
-      const docRef = doc(firestore, collectionName, id);
+      const docRef = getFirestoreDocRef(collectionName, id, targetUid);
       batch.delete(docRef);
     });
     await batch.commit();
@@ -281,40 +307,36 @@ export async function batchDeleteDocuments(collectionName: string, ids: string[]
   }
 }
 
-/**
- * Security guard specifically for Pengaturan Database connection.
- */
 export function checkPengaturanDatabaseAuthorization(): { authorized: boolean; reason?: string } {
   return { authorized: true };
 }
 
-// Pengaturan special helper (Doc ID: "config") with isolated database connection & security guard
-export async function savePengaturan(config: Pengaturan) {
-  if (isIsolatedRemix()) {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("edadmin_remix_db_pengaturan", JSON.stringify(config));
-      window.dispatchEvent(new CustomEvent("edadmin_remix_db_update_pengaturan", { detail: config }));
-    }
-    return;
+// Pengaturan helper per-guru (Doc ID: "config")
+export async function savePengaturan(config: Pengaturan, userId?: string) {
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
+  const cacheKey = targetUid ? `edadmin_teacher_${targetUid}_pengaturan` : "edadmin_pengaturan_isolated";
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(cacheKey, JSON.stringify(config));
+    window.dispatchEvent(new CustomEvent("edadmin_remix_db_update_pengaturan", { detail: config }));
   }
 
   try {
-    const docRef = doc(firestore, COLLECTIONS.PENGATURAN, "config");
+    const docRef = getFirestoreDocRef(COLLECTIONS.PENGATURAN, "config", targetUid);
     await setDoc(docRef, { ...config, updatedAt: Date.now() }, { merge: true });
-    if (typeof window !== "undefined") {
-      localStorage.setItem("edadmin_pengaturan_isolated", JSON.stringify(config));
-    }
   } catch (err: any) {
     console.error("Error saving pengaturan:", err);
     throw err;
   }
 }
 
-export function subscribePengaturan(callback: (config: Pengaturan) => void) {
-  // 1. Immediate emission from local cache to prevent blank flicker
+export function subscribePengaturan(callback: (config: Pengaturan) => void, userId?: string) {
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
+  const cacheKey = targetUid ? `edadmin_teacher_${targetUid}_pengaturan` : "edadmin_pengaturan_isolated";
+
   let cachedConfig: Pengaturan | null = null;
   if (typeof window !== "undefined") {
-    const rawCached = localStorage.getItem("edadmin_pengaturan_isolated") || localStorage.getItem("edadmin_remix_db_pengaturan");
+    const rawCached = localStorage.getItem(cacheKey) || localStorage.getItem("edadmin_pengaturan_isolated");
     if (rawCached) {
       try {
         cachedConfig = JSON.parse(rawCached);
@@ -327,18 +349,7 @@ export function subscribePengaturan(callback: (config: Pengaturan) => void) {
     }
   }
 
-  if (isIsolatedRemix()) {
-    if (typeof window !== "undefined") {
-      const handleUpdate = (e: any) => {
-        if (e.detail) callback(e.detail);
-      };
-      window.addEventListener("edadmin_remix_db_update_pengaturan", handleUpdate);
-      return () => window.removeEventListener("edadmin_remix_db_update_pengaturan", handleUpdate);
-    }
-    return () => {};
-  }
-
-  const docRef = doc(firestore, COLLECTIONS.PENGATURAN, "config");
+  const docRef = getFirestoreDocRef(COLLECTIONS.PENGATURAN, "config", targetUid);
   return onSnapshot(
     docRef, 
     (docSnap) => {
@@ -346,11 +357,9 @@ export function subscribePengaturan(callback: (config: Pengaturan) => void) {
         const data = docSnap.data() as Pengaturan;
         callback(data);
         if (typeof window !== "undefined") {
-          localStorage.setItem("edadmin_pengaturan_isolated", JSON.stringify(data));
-          localStorage.setItem("edadmin_remix_db_pengaturan", JSON.stringify(data));
+          localStorage.setItem(cacheKey, JSON.stringify(data));
         }
       } else {
-        // If config doc does not exist yet in Firestore, but local storage has a saved profile/name:
         if (cachedConfig && (cachedConfig.Nama_Guru || cachedConfig.Nama_Sekolah)) {
           setDoc(docRef, { ...cachedConfig, updatedAt: Date.now() }, { merge: true }).catch((err) => {
             console.warn("Auto-sync local pengaturan to Firestore notice:", err);
@@ -360,17 +369,238 @@ export function subscribePengaturan(callback: (config: Pengaturan) => void) {
     },
     (error) => {
       console.warn("Firestore pengaturan subscription notice:", error?.message || error);
+      if (cachedConfig) callback(cachedConfig);
     }
   );
 }
 
-/**
- * Uploads all local browser storage data (from laptop/PC) to Firebase Firestore
- * so it becomes immediately accessible on other devices such as mobile phones (HP).
- */
-export async function syncAllLocalDataToFirestore(): Promise<{ syncedCount: number; message: string }> {
-  let count = 0;
+// ============================================================================
+// Teacher Authentication & User Management (Firebase Auth & Scoped Profiles)
+// ============================================================================
+
+export async function saveTeacherProfile(userId: string, data: Partial<GuruUser>): Promise<void> {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(`edadmin_profile_${userId}`, JSON.stringify(data));
+  }
   try {
+    const userDocRef = doc(firestore, "users", userId);
+    await setDoc(userDocRef, { ...data, updatedAt: Date.now() }, { merge: true });
+  } catch (err) {
+    console.warn("Notice: Could not save teacher profile in firestore users collection:", err);
+  }
+}
+
+export async function getTeacherProfile(userId: string): Promise<GuruUser | null> {
+  try {
+    const userDocRef = doc(firestore, "users", userId);
+    const snap = await getDoc(userDocRef);
+    if (snap.exists()) {
+      return snap.data() as GuruUser;
+    }
+  } catch (err) {
+    console.warn("Notice reading teacher profile from firestore:", err);
+  }
+
+  if (typeof window !== "undefined") {
+    const raw = localStorage.getItem(`edadmin_profile_${userId}`);
+    if (raw) {
+      try {
+        return JSON.parse(raw) as GuruUser;
+      } catch {}
+    }
+  }
+  return null;
+}
+
+export async function loginWithGoogle(): Promise<GuruUser> {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+  
+  const existingProfile = await getTeacherProfile(user.uid);
+  const guruUser: GuruUser = {
+    uid: user.uid,
+    email: user.email,
+    displayName: existingProfile?.displayName || user.displayName || "Guru EduFutura",
+    photoURL: existingProfile?.photoURL || user.photoURL || null,
+    nip: existingProfile?.nip || "",
+    sekolah: existingProfile?.sekolah || "",
+    mapelUtama: existingProfile?.mapelUtama || "",
+    isGuest: false,
+    createdAt: existingProfile?.createdAt || Date.now()
+  };
+
+  await saveTeacherProfile(user.uid, guruUser);
+  setActiveUserId(user.uid);
+  return guruUser;
+}
+
+export async function loginWithEmail(email: string, pass: string): Promise<GuruUser> {
+  const result = await signInWithEmailAndPassword(auth, email.trim(), pass);
+  const user = result.user;
+  
+  const existingProfile = await getTeacherProfile(user.uid);
+  const guruUser: GuruUser = {
+    uid: user.uid,
+    email: user.email,
+    displayName: existingProfile?.displayName || user.displayName || email.split("@")[0],
+    photoURL: existingProfile?.photoURL || user.photoURL || null,
+    nip: existingProfile?.nip || "",
+    sekolah: existingProfile?.sekolah || "",
+    mapelUtama: existingProfile?.mapelUtama || "",
+    isGuest: false,
+    createdAt: existingProfile?.createdAt || Date.now()
+  };
+
+  setActiveUserId(user.uid);
+  return guruUser;
+}
+
+export async function registerTeacher(
+  email: string, 
+  pass: string, 
+  profileData: { namaGuru: string; nipGuru?: string; namaSekolah?: string; mapelUtama?: string }
+): Promise<GuruUser> {
+  const result = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+  const user = result.user;
+
+  if (profileData.namaGuru) {
+    try {
+      await updateProfile(user, { displayName: profileData.namaGuru });
+    } catch {}
+  }
+
+  const guruUser: GuruUser = {
+    uid: user.uid,
+    email: user.email,
+    displayName: profileData.namaGuru || user.displayName || "Guru",
+    photoURL: null,
+    nip: profileData.nipGuru || "",
+    sekolah: profileData.namaSekolah || "SMP NEGERI / SEKOLAH SAYA",
+    mapelUtama: profileData.mapelUtama || "",
+    isGuest: false,
+    createdAt: Date.now()
+  };
+
+  await saveTeacherProfile(user.uid, guruUser);
+
+  // Initialize teacher's isolated configuration
+  const defaultTeacherConfig: Pengaturan = {
+    Nama_Guru: profileData.namaGuru || "Guru EduFutura",
+    NIP_Guru: profileData.nipGuru || "-",
+    Nama_Sekolah: profileData.namaSekolah || "SMP NEGERI / SEKOLAH SAYA",
+    Alamat_Sekolah: "Jalan Pendidikan No. 1",
+    Pemerintah: "PEMERINTAH KABUPATEN / KOTA",
+    Nama_Kepsek: "Kepala Sekolah, M.Pd.",
+    NIP_Kepsek: "-",
+    Tempat_Tanda_Tangan: "Kota",
+    Logo_Kiri: "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU",
+    Logo_Kanan: "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU"
+  };
+  await savePengaturan(defaultTeacherConfig, user.uid);
+
+  setActiveUserId(user.uid);
+  return guruUser;
+}
+
+export async function loginAsGuest(namaGuru?: string, namaSekolah?: string): Promise<GuruUser> {
+  const guestUid = "tamu_" + Math.random().toString(36).substring(2, 9);
+  const guruUser: GuruUser = {
+    uid: guestUid,
+    email: "tamu@edufutura.ai",
+    displayName: namaGuru || "Guru Tamu (Mode Demo)",
+    photoURL: null,
+    nip: "19880101 201401 1 001",
+    sekolah: namaSekolah || "SMP Percontohan Digital",
+    mapelUtama: "Informatika / Umum",
+    isGuest: true,
+    createdAt: Date.now()
+  };
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("edadmin_guest_user", JSON.stringify(guruUser));
+  }
+  setActiveUserId(guestUid);
+  return guruUser;
+}
+
+export async function logoutUser(): Promise<void> {
+  try {
+    await signOut(auth);
+  } catch (e) {
+    console.warn("SignOut notice:", e);
+  }
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("edadmin_guest_user");
+    localStorage.removeItem("edadmin_active_uid");
+    localStorage.removeItem("edadmin_user");
+    localStorage.removeItem("edadmin_auth_token");
+  }
+  setActiveUserId("");
+}
+
+export async function sendResetPassword(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
+}
+
+export function subscribeAuthUser(callback: (user: GuruUser | null) => void): () => void {
+  // Check guest mode first
+  if (typeof window !== "undefined") {
+    const guestRaw = localStorage.getItem("edadmin_guest_user");
+    if (guestRaw) {
+      try {
+        const guest = JSON.parse(guestRaw) as GuruUser;
+        if (guest && guest.isGuest) {
+          setActiveUserId(guest.uid);
+          callback(guest);
+          return () => {};
+        }
+      } catch {}
+    }
+  }
+
+  return onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+    if (firebaseUser) {
+      setActiveUserId(firebaseUser.uid);
+      const profile = await getTeacherProfile(firebaseUser.uid);
+      const guruUser: GuruUser = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: profile?.displayName || firebaseUser.displayName || "Guru",
+        photoURL: profile?.photoURL || firebaseUser.photoURL || null,
+        nip: profile?.nip || "",
+        sekolah: profile?.sekolah || "",
+        mapelUtama: profile?.mapelUtama || "",
+        isGuest: false,
+        createdAt: profile?.createdAt || Date.now()
+      };
+      callback(guruUser);
+    } else {
+      // Check if guest was set in meantime
+      const guestRaw = typeof window !== "undefined" ? localStorage.getItem("edadmin_guest_user") : null;
+      if (guestRaw) {
+        try {
+          const guest = JSON.parse(guestRaw) as GuruUser;
+          if (guest && guest.isGuest) {
+            setActiveUserId(guest.uid);
+            callback(guest);
+            return;
+          }
+        } catch {}
+      }
+      setActiveUserId("");
+      callback(null);
+    }
+  });
+}
+
+// Background data sync
+export async function syncAllLocalDataToFirestore() {
+  const targetUid = currentActiveUserId;
+  try {
+    let count = 0;
     const listCols = [
       COLLECTIONS.SISWA,
       COLLECTIONS.MAPEL,
@@ -383,27 +613,10 @@ export async function syncAllLocalDataToFirestore(): Promise<{ syncedCount: numb
     ];
 
     for (const colName of listCols) {
-      const localItems = getRemixStorage<any>(colName);
+      const localItems = getRemixStorage<any>(colName, targetUid);
       if (localItems && localItems.length > 0) {
-        await batchSaveDocuments(colName, localItems);
+        await batchSaveDocuments(colName, localItems, targetUid);
         count += localItems.length;
-      }
-    }
-
-    // Sync Pengaturan profile (Nama Guru, Kop Sekolah, dll.)
-    if (typeof window !== "undefined") {
-      const rawCfg = localStorage.getItem("edadmin_pengaturan_isolated") || localStorage.getItem("edadmin_remix_db_pengaturan");
-      if (rawCfg) {
-        try {
-          const cfg = JSON.parse(rawCfg);
-          if (cfg && (cfg.Nama_Guru || cfg.Nama_Sekolah)) {
-            const docRef = doc(firestore, COLLECTIONS.PENGATURAN, "config");
-            await setDoc(docRef, { ...cfg, updatedAt: Date.now() }, { merge: true });
-            count++;
-          }
-        } catch (e) {
-          console.warn("Could not parse config during sync:", e);
-        }
       }
     }
 
@@ -417,9 +630,10 @@ export async function syncAllLocalDataToFirestore(): Promise<{ syncedCount: numb
   }
 }
 
-// Clear / Wipe All Collections in Database (Except Configuration) with authorization guard
-export async function clearAllDatabaseCollections() {
-  localStorage.setItem("edadmin_database_cleared", "true");
+// Clear / Wipe Collections in Current Teacher's Space
+export async function clearAllDatabaseCollections(userId?: string) {
+  const targetUid = userId !== undefined ? userId : currentActiveUserId;
+  localStorage.setItem(`edadmin_database_cleared_${targetUid}`, "true");
 
   const collectionsToClear = [
     COLLECTIONS.SISWA,
@@ -432,54 +646,23 @@ export async function clearAllDatabaseCollections() {
     COLLECTIONS.BIMBINGAN_WALI
   ];
 
-  // 1. Always purge local storage fallback for all collections & dispatch update events
   collectionsToClear.forEach((colName) => {
-    setRemixStorage(colName, []);
+    setRemixStorage(colName, [], targetUid);
   });
 
-  if (isIsolatedRemix()) {
-    return;
-  }
-
-  // 2. Set isDatabaseCleared flag in Firestore configuration
-  try {
-    const configDocRef = doc(firestore, COLLECTIONS.PENGATURAN, "config");
-    await setDoc(configDocRef, { isDatabaseCleared: true, updatedAt: Date.now() }, { merge: true });
-  } catch (err) {
-    console.warn("Could not set isDatabaseCleared flag in pengaturan collection:", err);
-  }
-
-  // 3. Clear all collections in Firestore (chunked batch deletes with individual fallback)
   for (const colName of collectionsToClear) {
     try {
-      const colRef = collection(firestore, colName);
+      const colRef = getFirestoreColRef(colName, targetUid);
       const snapshot = await getDocs(colRef);
       if (!snapshot.empty) {
-        const docs = snapshot.docs;
-        // Batch delete in chunks of 200
-        for (let i = 0; i < docs.length; i += 200) {
-          const chunk = docs.slice(i, i + 200);
-          try {
-            const batch = writeBatch(firestore);
-            chunk.forEach((docSnap) => {
-              batch.delete(docSnap.ref);
-            });
-            await batch.commit();
-          } catch (batchErr) {
-            console.warn(`Batch delete failed for ${colName}, attempting individual deletes:`, batchErr);
-            // Fallback to individual deletes if batch fails
-            for (const docSnap of chunk) {
-              try {
-                await deleteDoc(docSnap.ref);
-              } catch (singleErr) {
-                console.warn(`Notice: Could not delete document ${docSnap.id} in ${colName}:`, singleErr);
-              }
-            }
-          }
-        }
+        const batch = writeBatch(firestore);
+        snapshot.docs.forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
       }
     } catch (err: any) {
-      console.warn(`Notice while fetching/clearing collection ${colName}:`, err);
+      console.warn(`Notice while clearing collection ${colName}:`, err);
     }
   }
 }

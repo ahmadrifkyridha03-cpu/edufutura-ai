@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Menu, 
   CloudCheck, 
@@ -9,9 +9,16 @@ import {
   ShieldCheck, 
   HelpCircle,
   Sparkles,
-  Radio
+  Radio,
+  User,
+  LogOut,
+  Settings,
+  ChevronDown,
+  CheckCircle2,
+  School,
+  BookOpen
 } from "lucide-react";
-import { Pengaturan } from "../types";
+import { Pengaturan, GuruUser } from "../types";
 
 interface HeaderProps {
   activeTab: string;
@@ -21,7 +28,9 @@ interface HeaderProps {
   onToggleDarkMode?: () => void;
   isConnected: boolean;
   config: Pengaturan;
+  currentUser?: GuruUser | null;
   onLogout?: () => void;
+  onOpenSettings?: () => void;
   onOpenWelcomeGuide?: () => void;
 }
 
@@ -56,9 +65,13 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleDarkMode,
   isConnected,
   config,
+  currentUser,
   onLogout,
+  onOpenSettings,
   onOpenWelcomeGuide
 }) => {
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const handleSelectDark = (dark: boolean) => {
     if (onSetDarkMode) {
       onSetDarkMode(dark);
@@ -66,6 +79,12 @@ export const Header: React.FC<HeaderProps> = ({
       onToggleDarkMode();
     }
   };
+
+  const displayName = currentUser?.displayName || config.Nama_Guru || "Guru EduFutura";
+  const initial = displayName.charAt(0).toUpperCase() || "G";
+  const email = currentUser?.email || "guru@belajar.id";
+  const nip = currentUser?.nip || config.NIP_Guru || "-";
+  const sekolah = currentUser?.sekolah || config.Nama_Sekolah || "-";
 
   return (
     <header className="sticky top-0 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between px-3 sm:px-4 lg:px-6 shrink-0 z-30 transition-colors shadow-sm dark:shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
@@ -115,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0 ml-1">
         {/* Real-time Firebase Radar Pulsar */}
         <div
-          className={`hidden min-[520px]:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-bold shadow-xs transition-colors shrink-0 ${
+          className={`hidden min-[580px]:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-mono font-bold shadow-xs transition-colors shrink-0 ${
             isConnected
               ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 dark:shadow-[0_0_12px_rgba(16,185,129,0.2)]"
               : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40"
@@ -128,15 +147,151 @@ export const Header: React.FC<HeaderProps> = ({
           <span>{isConnected ? "CLOUD_SYNCED" : "CONNECTING..."}</span>
         </div>
 
-        {/* Teacher profile cyber-pill */}
-        <div className="flex items-center space-x-1.5 bg-slate-100/80 dark:bg-slate-900/80 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border border-slate-200 dark:border-white/10 shrink-0">
-          <ShieldCheck className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
-          <span 
-            className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 max-w-[85px] sm:max-w-[150px] truncate" 
-            title={config.Nama_Guru || "Guru"}
+        {/* Interactive Teacher Profile Dropdown Trigger */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center space-x-2 bg-slate-100/90 hover:bg-slate-200/80 dark:bg-slate-900/90 dark:hover:bg-slate-800/90 px-2 sm:px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 shrink-0 transition-all cursor-pointer active:scale-95 group shadow-xs"
+            title="Klik untuk membuka menu profil guru"
+            aria-label="Menu Profil Guru"
+            aria-expanded={isProfileOpen}
           >
-            {config.Nama_Guru || "Drs. Yefri Haryanto, M.Pd."}
-          </span>
+            {/* Avatar */}
+            {currentUser?.photoURL ? (
+              <img 
+                src={currentUser.photoURL} 
+                alt={displayName} 
+                className="w-6 h-6 rounded-lg object-cover ring-1 ring-cyan-400 shrink-0" 
+              />
+            ) : (
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
+                {initial}
+              </div>
+            )}
+
+            <div className="flex flex-col items-start min-w-0 text-left">
+              <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[80px] sm:max-w-[130px] truncate leading-tight">
+                {displayName}
+              </span>
+              <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 hidden sm:block leading-tight">
+                {currentUser?.isGuest ? "Tamu / Demo" : "Guru Aktif"}
+              </span>
+            </div>
+
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-transform duration-200 ${isProfileOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {/* Clickaway backdrop */}
+          {isProfileOpen && (
+            <div 
+              className="fixed inset-0 z-40" 
+              onClick={() => setIsProfileOpen(false)} 
+            />
+          )}
+
+          {/* Futuristic Profile Dropdown Card */}
+          {isProfileOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-2xl border border-slate-200 dark:border-white/15 p-4 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200">
+              {/* Profile Card Header */}
+              <div className="flex items-center space-x-3 pb-3 border-b border-slate-200/80 dark:border-white/10">
+                {currentUser?.photoURL ? (
+                  <img 
+                    src={currentUser.photoURL} 
+                    alt={displayName} 
+                    className="w-11 h-11 rounded-xl object-cover ring-2 ring-cyan-400/60 shadow-md shrink-0" 
+                  />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white font-extrabold text-lg shadow-lg shrink-0">
+                    {initial}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center space-x-1.5">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+                      {displayName}
+                    </h4>
+                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">
+                    {email}
+                  </p>
+                  <span className="inline-block mt-0.5 text-[9px] px-2 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+                    {currentUser?.isGuest ? "Sesi Tamu" : "Ruang Kerja Terisolasi"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Profile Metadata Info */}
+              <div className="py-3 space-y-2 text-xs border-b border-slate-200/80 dark:border-white/10">
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                  <span className="flex items-center space-x-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>NIP:</span>
+                  </span>
+                  <span className="font-mono font-medium text-slate-900 dark:text-slate-200 text-right truncate max-w-[150px]">
+                    {nip}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                  <span className="flex items-center space-x-1.5">
+                    <School className="w-3.5 h-3.5 text-violet-500" />
+                    <span>Sekolah:</span>
+                  </span>
+                  <span className="font-medium text-slate-900 dark:text-slate-200 text-right truncate max-w-[150px]">
+                    {sekolah}
+                  </span>
+                </div>
+
+                {currentUser?.mapelUtama && (
+                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                    <span className="flex items-center space-x-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Mapel:</span>
+                    </span>
+                    <span className="font-medium text-slate-900 dark:text-slate-200 text-right truncate max-w-[150px]">
+                      {currentUser.mapelUtama}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-3 space-y-2">
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      onOpenSettings();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <Settings className="w-4 h-4 text-slate-500" />
+                      <span>Profil & Pengaturan Sekolah</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400">&rarr;</span>
+                  </button>
+                )}
+
+                {onLogout && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-red-200 dark:border-red-900/50 transition-all cursor-pointer active:scale-98"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Keluar Akun Guru</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Welcome Guide Button */}

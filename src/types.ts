@@ -100,6 +100,18 @@ export interface Pengaturan {
   isDatabaseCleared?: boolean;
 }
 
+export interface GuruUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL?: string | null;
+  nip?: string;
+  sekolah?: string;
+  mapelUtama?: string;
+  isGuest?: boolean;
+  createdAt?: number;
+}
+
 export interface ModulFormState {
   namaGuru: string;
   nipGuru?: string;

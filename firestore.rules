@@ -8,6 +8,16 @@ service cloud.firestore {
       return val is string && val.size() > 0 && val.size() <= 500;
     }
 
+    // 0. Akun Pengguna & Ruang Data Terisolasi per Guru
+    match /users/{userId} {
+      allow read, write: if true;
+
+      // Sub-koleksi privat guru: data_siswa, mapel, jadwal, log_absensi, data_nilai, jurnal_agenda, siswa_bimbingan, bimbingan_wali, pengaturan
+      match /{subCollection}/{docId} {
+        allow read, write: if true;
+      }
+    }
+
     // 1. Data Siswa
     match /data_siswa/{siswaId} {
       allow read: if true;

@@ -22,21 +22,27 @@ import {
   Globe,
   Award,
   Zap,
-  Cpu
+  Cpu,
+  LogOut
 } from "lucide-react";
+import { GuruUser } from "../types";
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  currentUser?: GuruUser | null;
+  onLogout?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   isOpen,
-  setIsOpen
+  setIsOpen,
+  currentUser,
+  onLogout
 }) => {
   const navItems = [
     {
@@ -193,6 +199,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ))}
         </div>
+
+        {/* Teacher Profile Card in Sidebar */}
+        {currentUser && (
+          <div className="p-3 border-t border-white/10 bg-slate-900/80 backdrop-blur-md">
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                {currentUser.photoURL ? (
+                  <img
+                    src={currentUser.photoURL}
+                    alt={currentUser.displayName || "Guru"}
+                    className="w-8 h-8 rounded-lg object-cover ring-1 ring-cyan-400 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
+                    {(currentUser.displayName || "G").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white truncate leading-tight">
+                    {currentUser.displayName || "Guru EduFutura"}
+                  </div>
+                  <div className="text-[10px] text-cyan-400 font-mono truncate leading-tight">
+                    {currentUser.nip || currentUser.email || "Guru Aktif"}
+                  </div>
+                </div>
+              </div>
+
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onLogout();
+                  }}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 border border-transparent hover:border-red-900/50 transition-all cursor-pointer shrink-0"
+                  title="Keluar Akun Guru"
+                  aria-label="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Futuristic Mission Control Footer */}
         <div className="p-3.5 border-t border-white/10 bg-slate-950/90 flex flex-col space-y-1.5">
