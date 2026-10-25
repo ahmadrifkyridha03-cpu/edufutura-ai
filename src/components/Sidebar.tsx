@@ -23,6 +23,7 @@ import {
   Award,
   Zap,
   Cpu,
+  Crown,
   LogOut
 } from "lucide-react";
 import { GuruUser } from "../types";
@@ -44,7 +45,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
   onLogout
 }) => {
+  const isSuperadmin = currentUser?.role === "superadmin";
+
   const navItems = [
+    ...(isSuperadmin ? [{
+      group: "👑 SUPERADMIN CONTROL",
+      items: [
+        { id: "superadmin", label: "Panel Superadmin", icon: Crown, highlight: true }
+      ]
+    }] : []),
     {
       group: "COMMAND CENTER",
       items: [
@@ -209,19 +218,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <img
                     src={currentUser.photoURL}
                     alt={currentUser.displayName || "Guru"}
-                    className="w-8 h-8 rounded-lg object-cover ring-1 ring-cyan-400 shrink-0"
+                    className={`w-8 h-8 rounded-lg object-cover shrink-0 ${
+                      isSuperadmin ? "ring-2 ring-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]" : "ring-1 ring-cyan-400"
+                    }`}
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
-                    {(currentUser.displayName || "G").charAt(0).toUpperCase()}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0 ${
+                    isSuperadmin 
+                      ? "bg-gradient-to-tr from-amber-600 via-orange-600 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" 
+                      : "bg-gradient-to-tr from-violet-600 to-cyan-500"
+                  }`}>
+                    {isSuperadmin ? <Crown className="w-4 h-4 text-amber-200" /> : (currentUser.displayName || "G").charAt(0).toUpperCase()}
                   </div>
                 )}
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate leading-tight">
-                    {currentUser.displayName || "Guru EduFutura"}
+                  <div className="text-xs font-bold text-white truncate leading-tight flex items-center gap-1">
+                    <span>{currentUser.displayName || "Guru EduFutura"}</span>
+                    {isSuperadmin && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
                   </div>
-                  <div className="text-[10px] text-cyan-400 font-mono truncate leading-tight">
-                    {currentUser.nip || currentUser.email || "Guru Aktif"}
+                  <div className={`text-[10px] font-mono truncate leading-tight ${
+                    isSuperadmin ? "text-amber-400 font-bold" : "text-cyan-400"
+                  }`}>
+                    {isSuperadmin ? "👑 Root Superadmin" : (currentUser.nip || currentUser.email || "Guru Aktif")}
                   </div>
                 </div>
               </div>

@@ -18,7 +18,9 @@ import {
   ChevronRight,
   X,
   SlidersHorizontal,
-  Award
+  Award,
+  Crown,
+  Eye
 } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { Header } from "./components/Header";
@@ -46,6 +48,7 @@ const GeneratorAILainnyaView = lazy(() => import("./components/GeneratorAILainny
 const PusatLaporanView = lazy(() => import("./components/PusatLaporanView").then(m => ({ default: m.PusatLaporanView })));
 const PengaturanView = lazy(() => import("./components/PengaturanView").then(m => ({ default: m.PengaturanView })));
 const ResetDatabaseView = lazy(() => import("./components/ResetDatabaseView").then(m => ({ default: m.ResetDatabaseView })));
+const SuperadminView = lazy(() => import("./components/SuperadminView").then(m => ({ default: m.SuperadminView })));
 
 
 import { LoginView } from "./components/LoginView";
@@ -144,6 +147,7 @@ export default function App() {
 
   // Authentication & Active Teacher State
   const [currentUser, setCurrentUser] = useState<GuruUser | null>(null);
+  const [inspectedTeacher, setInspectedTeacher] = useState<GuruUser | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
 
   // Firestore Data Collections
@@ -174,9 +178,10 @@ export default function App() {
     };
   }, []);
 
-  // Subscribe to Firebase real-time collections scoped to active teacher
+  // Subscribe to Firebase real-time collections scoped to active teacher (or inspected teacher for superadmin)
   useEffect(() => {
-    if (!currentUser) {
+    const activeTarget = inspectedTeacher || currentUser;
+    if (!activeTarget) {
       setSiswaList([]);
       setMapelList([]);
       setJadwalList([]);
@@ -189,7 +194,7 @@ export default function App() {
       return;
     }
 
-    setActiveUserId(currentUser.uid);
+    setActiveUserId(activeTarget.uid);
     let unsubs: Array<() => void> = [];
 
     unsubs.push(subscribeCollection<Siswa>(COLLECTIONS.SISWA, (data) => {
@@ -247,7 +252,7 @@ export default function App() {
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, inspectedTeacher?.uid]);
 
   // Seed sample initial data if database is empty on first boot for this teacher
   useEffect(() => {
@@ -334,6 +339,7 @@ export default function App() {
     });
 
     if (result.isConfirmed) {
+      setInspectedTeacher(null);
       await logoutUser();
       setCurrentUser(null);
       setActiveUserId(null);
@@ -412,7 +418,29 @@ export default function App() {
           onLogout={handleLogout}
           onOpenSettings={() => setActiveTab("pengaturan")}
           onOpenWelcomeGuide={() => setIsWelcomeGuideOpen(true)}
+          onOpenSuperadmin={() => setActiveTab("superadmin")}
         />
+
+        {/* Floating Workspace Inspection Banner for Superadmin */}
+        {inspectedTeacher && (
+          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-slate-950 px-4 py-2 flex items-center justify-between text-xs font-bold shadow-md shrink-0 z-20 animate-pulse-laser">
+            <div className="flex items-center space-x-2 truncate">
+              <Eye className="w-4 h-4 shrink-0 text-slate-950" />
+              <span className="truncate">
+                Mode Inspeksi Workspace: <b>{inspectedTeacher.displayName}</b> ({inspectedTeacher.sekolah || "Sekolah"})
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setInspectedTeacher(null);
+                if (currentUser) setActiveUserId(currentUser.uid);
+              }}
+              className="ml-3 px-3 py-1 bg-slate-950 hover:bg-slate-900 text-amber-300 rounded-lg text-xs font-mono transition-all shrink-0 cursor-pointer shadow-sm"
+            >
+              Kembali ke Master Workspace &rarr;
+            </button>
+          </div>
+        )}
 
         {/* Sub-Header Pill Navigation Bar: Akademik */}
         {AKADEMIK_ITEMS.some(item => item.id === activeTab) && (
@@ -631,6 +659,22 @@ export default function App() {
 
             {activeTab === "resetdb" && (
               <ResetDatabaseView onSuccessReset={handleSuccessReset} />
+            )}
+
+            {activeTab === "superadmin" && currentUser?.role === "superadmin" && (
+              <SuperadminView
+                currentUser={currentUser}
+                onSwitchWorkspace={(teacher) => {
+                  setInspectedTeacher(teacher);
+                  if (teacher) {
+                    setActiveUserId(teacher.uid);
+                  } else if (currentUser) {
+                    setActiveUserId(currentUser.uid);
+                  }
+                }}
+                activeInspectedTeacher={inspectedTeacher}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+              />
             )}
           </Suspense>
         </main>

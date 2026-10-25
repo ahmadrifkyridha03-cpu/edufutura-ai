@@ -18,6 +18,8 @@ import {
   CheckCircle2, 
   Compass, 
   HelpCircle,
+  Crown,
+  ShieldAlert,
   KeyRound,
   ArrowRight
 } from "lucide-react";
@@ -26,7 +28,9 @@ import {
   registerTeacher, 
   loginWithGoogle, 
   loginAsGuest, 
-  sendResetPassword 
+  sendResetPassword,
+  loginAsSuperAdmin,
+  DEFAULT_SUPERADMIN_PASSKEY
 } from "../lib/firebase";
 import { GuruUser } from "../types";
 
@@ -41,7 +45,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   isDarkMode,
   onToggleDarkMode,
 }) => {
-  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+  const [activeTab, setActiveTab] = useState<"login" | "register" | "superadmin">("login");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -60,6 +64,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Form State Superadmin
+  const [superadminName, setSuperadminName] = useState("Ahmad Rifky Ridha");
+  const [superadminKey, setSuperadminKey] = useState("");
+  const [showSuperadminKey, setShowSuperadminKey] = useState(false);
 
   // State Modal Lupa Password
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -227,6 +236,31 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
+  // 6. Handle Login Superadmin dengan Master Passkey
+  const handleSuperadminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!superadminKey.trim()) {
+      setErrorMsg("Mohon masukkan Master Passkey Superadmin.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const user = await loginAsSuperAdmin(superadminKey, superadminName);
+      setSuccessMsg(`Otoritas Superadmin Diterima! Selamat datang, ${user.displayName}`);
+      setTimeout(() => {
+        onLoginSuccess(user);
+      }, 500);
+    } catch (err: any) {
+      console.error("Superadmin login error:", err);
+      setErrorMsg(err?.message || "Passkey Superadmin tidak valid!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-100 dark:bg-[#030712] p-4 sm:p-6 transition-colors font-sans relative overflow-hidden">
       {/* Cyber Grid & Ambient Glow Orbs */}
@@ -284,8 +318,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
         {/* Auth Glassmorphism Card */}
         <div className="bg-white/95 dark:bg-slate-900/85 backdrop-blur-2xl rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-white/10 shadow-[0_16px_50px_rgba(0,0,0,0.4)] space-y-5">
-          {/* Nav Tabs: Masuk vs Daftar Guru Baru */}
-          <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 text-xs font-bold font-display">
+          {/* Nav Tabs: Masuk vs Daftar Guru Baru vs Superadmin */}
+          <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 text-xs font-bold font-display">
             <button
               type="button"
               onClick={() => {
@@ -293,14 +327,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 setErrorMsg(null);
                 setSuccessMsg(null);
               }}
-              className={`py-2.5 rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+              className={`py-2 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                 activeTab === "login"
                   ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-cyan-300 shadow-md scale-100"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
-              <LogIn className="w-4 h-4" />
-              <span>Masuk Akun</span>
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Masuk</span>
             </button>
 
             <button
@@ -310,14 +344,31 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 setErrorMsg(null);
                 setSuccessMsg(null);
               }}
-              className={`py-2.5 rounded-xl transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+              className={`py-2 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                 activeTab === "register"
                   ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-cyan-300 shadow-md scale-100"
                   : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
               }`}
             >
-              <UserPlus className="w-4 h-4" />
-              <span>Daftar Guru Baru</span>
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Daftar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("superadmin");
+                setErrorMsg(null);
+                setSuccessMsg(null);
+              }}
+              className={`py-2 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                activeTab === "superadmin"
+                  ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-amber-500/40 shadow-md scale-100"
+                  : "text-amber-600/80 hover:text-amber-700 dark:text-amber-400/80 dark:hover:text-amber-300"
+              }`}
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-500" />
+              <span>Superadmin</span>
             </button>
           </div>
 
@@ -606,6 +657,99 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   <>
                     <UserPlus className="w-4 h-4" />
                     <span>Daftar Akun &amp; Buka Ruang Kerja Privat</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* TAB 3: FORM OTORITAS SUPERADMIN */}
+          {activeTab === "superadmin" && (
+            <form onSubmit={handleSuperadminLogin} className="space-y-4">
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 flex items-start space-x-3 text-amber-900 dark:text-amber-200 text-xs shadow-inner">
+                <Crown className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                <div className="space-y-1">
+                  <p className="font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <span>Otoritas Superadmin &amp; Master Workspace</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono font-bold border border-amber-500/40">
+                      ROOT ACCESS
+                    </span>
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
+                    Mode ini memberikan wewenang penuh untuk memantau data seluruh guru, menginspeksi workspace antar guru, dan mengatur master database.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Nama Administrator Utama *
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={superadminName}
+                    onChange={(e) => setSuperadminName(e.target.value)}
+                    placeholder="Nama Lengkap Administrator"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950/70 border border-amber-500/30 dark:border-amber-500/40 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 text-xs font-semibold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Master Passkey Superadmin *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setSuperadminKey(DEFAULT_SUPERADMIN_PASSKEY)}
+                    className="text-[10.5px] text-amber-600 dark:text-amber-400 hover:underline font-mono font-bold cursor-pointer"
+                    title="Gunakan passkey master bawaan"
+                  >
+                    ⚡ Isi Cepat: {DEFAULT_SUPERADMIN_PASSKEY}
+                  </button>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showSuperadminKey ? "text" : "password"}
+                    required
+                    value={superadminKey}
+                    onChange={(e) => setSuperadminKey(e.target.value)}
+                    placeholder={`Masukkan Master Passkey (${DEFAULT_SUPERADMIN_PASSKEY})`}
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950/70 border border-amber-500/30 dark:border-amber-500/40 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 text-xs font-mono font-bold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSuperadminKey(!showSuperadminKey)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-amber-500 cursor-pointer"
+                  >
+                    {showSuperadminKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4 text-amber-500" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-white font-display font-bold text-xs sm:text-sm rounded-xl shadow-[0_0_25px_rgba(245,158,11,0.4)] active:scale-98 transition-all flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Mengautentikasi Hak Akses Root...</span>
+                  </>
+                ) : (
+                  <>
+                    <Crown className="w-4 h-4 text-amber-200" />
+                    <span>Buka Hak Akses Penuh Superadmin</span>
                   </>
                 )}
               </button>

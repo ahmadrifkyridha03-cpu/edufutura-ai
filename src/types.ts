@@ -109,6 +109,7 @@ export interface GuruUser {
   sekolah?: string;
   mapelUtama?: string;
   isGuest?: boolean;
+  role?: 'superadmin' | 'guru';
   createdAt?: number;
 }
 

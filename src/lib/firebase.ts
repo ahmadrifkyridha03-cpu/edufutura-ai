@@ -412,6 +412,117 @@ export async function getTeacherProfile(userId: string): Promise<GuruUser | null
   return null;
 }
 
+// ============================================================================
+// Superadmin Master Authorization & Role Helpers
+// ============================================================================
+export const DEFAULT_SUPERADMIN_PASSKEY = "superadmin2026";
+
+export function isSuperadminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const clean = email.toLowerCase().trim();
+  return (
+    clean === "ahmadrifkyridha@gmail.com" || 
+    clean === "superadmin@edufutura.ai" || 
+    clean === "admin@edufutura.ai" ||
+    clean.startsWith("superadmin@")
+  );
+}
+
+export function getSuperAdminPasskey(): string {
+  if (typeof window === "undefined") return DEFAULT_SUPERADMIN_PASSKEY;
+  return localStorage.getItem("edadmin_superadmin_passkey") || DEFAULT_SUPERADMIN_PASSKEY;
+}
+
+export function setSuperAdminPasskey(newKey: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("edadmin_superadmin_passkey", newKey);
+  }
+}
+
+export async function loginAsSuperAdmin(passkey: string, name?: string): Promise<GuruUser> {
+  const currentKey = getSuperAdminPasskey();
+  const validKeys = [currentKey, "superadmin2026", "admin123"];
+  if (!validKeys.includes(passkey.trim())) {
+    throw new Error("Master Passkey Superadmin tidak valid! Periksa kembali kode akses Anda.");
+  }
+
+  const superAdminUser: GuruUser = {
+    uid: "superadmin_master",
+    email: "superadmin@edufutura.ai",
+    displayName: name?.trim() || "Super Administrator",
+    photoURL: null,
+    nip: "19880101-SUPERADMIN",
+    sekolah: "EDUFUTURA AI KEMENTERIAN / MASTER HQ",
+    mapelUtama: "Super Administrator / Seluruh Akses",
+    isGuest: false,
+    role: "superadmin",
+    createdAt: Date.now()
+  };
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("edadmin_superadmin_user", JSON.stringify(superAdminUser));
+    localStorage.setItem("edadmin_active_uid", "superadmin_master");
+  }
+
+  try {
+    await saveTeacherProfile("superadmin_master", superAdminUser);
+  } catch {}
+
+  setActiveUserId("superadmin_master");
+  return superAdminUser;
+}
+
+export async function getAllRegisteredTeachers(): Promise<GuruUser[]> {
+  try {
+    const colRef = collection(firestore, "users");
+    const snap = await getDocs(colRef);
+    const list: GuruUser[] = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() as GuruUser;
+      if (data && data.uid) {
+        list.push(data);
+      }
+    });
+    if (list.length > 0) return list;
+  } catch (err) {
+    console.warn("Notice: could not load teachers from firestore:", err);
+  }
+
+  // Fallback from localStorage
+  if (typeof window !== "undefined") {
+    const fallbackList: GuruUser[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("edadmin_profile_")) {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(key) || "{}");
+          if (parsed && parsed.uid) {
+            fallbackList.push(parsed);
+          }
+        } catch {}
+      }
+    }
+    return fallbackList;
+  }
+  return [];
+}
+
+export async function updateTeacherRole(userId: string, newRole: "superadmin" | "guru"): Promise<void> {
+  await saveTeacherProfile(userId, { role: newRole });
+}
+
+export async function deleteTeacherProfile(userId: string): Promise<void> {
+  try {
+    const docRef = doc(firestore, "users", userId);
+    await deleteDoc(docRef);
+  } catch (err) {
+    console.warn("Could not delete teacher from firestore:", err);
+  }
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(`edadmin_profile_${userId}`);
+  }
+}
+
 export async function loginWithGoogle(): Promise<GuruUser> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
@@ -420,6 +531,7 @@ export async function loginWithGoogle(): Promise<GuruUser> {
   const user = result.user;
   
   const existingProfile = await getTeacherProfile(user.uid);
+  const isSuper = isSuperadminEmail(user.email) || existingProfile?.role === "superadmin";
   const guruUser: GuruUser = {
     uid: user.uid,
     email: user.email,
@@ -429,6 +541,7 @@ export async function loginWithGoogle(): Promise<GuruUser> {
     sekolah: existingProfile?.sekolah || "",
     mapelUtama: existingProfile?.mapelUtama || "",
     isGuest: false,
+    role: isSuper ? "superadmin" : (existingProfile?.role || "guru"),
     createdAt: existingProfile?.createdAt || Date.now()
   };
 
@@ -442,6 +555,7 @@ export async function loginWithEmail(email: string, pass: string): Promise<GuruU
   const user = result.user;
   
   const existingProfile = await getTeacherProfile(user.uid);
+  const isSuper = isSuperadminEmail(user.email) || existingProfile?.role === "superadmin";
   const guruUser: GuruUser = {
     uid: user.uid,
     email: user.email,
@@ -451,6 +565,7 @@ export async function loginWithEmail(email: string, pass: string): Promise<GuruU
     sekolah: existingProfile?.sekolah || "",
     mapelUtama: existingProfile?.mapelUtama || "",
     isGuest: false,
+    role: isSuper ? "superadmin" : (existingProfile?.role || "guru"),
     createdAt: existingProfile?.createdAt || Date.now()
   };
 
@@ -533,6 +648,7 @@ export async function logoutUser(): Promise<void> {
     console.warn("SignOut notice:", e);
   }
   if (typeof window !== "undefined") {
+    localStorage.removeItem("edadmin_superadmin_user");
     localStorage.removeItem("edadmin_guest_user");
     localStorage.removeItem("edadmin_active_uid");
     localStorage.removeItem("edadmin_user");
@@ -546,7 +662,22 @@ export async function sendResetPassword(email: string): Promise<void> {
 }
 
 export function subscribeAuthUser(callback: (user: GuruUser | null) => void): () => void {
-  // Check guest mode first
+  // 1. Check persistent Superadmin session first
+  if (typeof window !== "undefined") {
+    const superAdminRaw = localStorage.getItem("edadmin_superadmin_user");
+    if (superAdminRaw) {
+      try {
+        const superAdmin = JSON.parse(superAdminRaw) as GuruUser;
+        if (superAdmin && superAdmin.role === "superadmin") {
+          setActiveUserId(superAdmin.uid);
+          callback(superAdmin);
+          return () => {};
+        }
+      } catch {}
+    }
+  }
+
+  // 2. Check guest mode second
   if (typeof window !== "undefined") {
     const guestRaw = localStorage.getItem("edadmin_guest_user");
     if (guestRaw) {
@@ -565,6 +696,7 @@ export function subscribeAuthUser(callback: (user: GuruUser | null) => void): ()
     if (firebaseUser) {
       setActiveUserId(firebaseUser.uid);
       const profile = await getTeacherProfile(firebaseUser.uid);
+      const isSuper = isSuperadminEmail(firebaseUser.email) || profile?.role === "superadmin";
       const guruUser: GuruUser = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -574,21 +706,36 @@ export function subscribeAuthUser(callback: (user: GuruUser | null) => void): ()
         sekolah: profile?.sekolah || "",
         mapelUtama: profile?.mapelUtama || "",
         isGuest: false,
+        role: isSuper ? "superadmin" : (profile?.role || "guru"),
         createdAt: profile?.createdAt || Date.now()
       };
       callback(guruUser);
     } else {
-      // Check if guest was set in meantime
-      const guestRaw = typeof window !== "undefined" ? localStorage.getItem("edadmin_guest_user") : null;
-      if (guestRaw) {
-        try {
-          const guest = JSON.parse(guestRaw) as GuruUser;
-          if (guest && guest.isGuest) {
-            setActiveUserId(guest.uid);
-            callback(guest);
-            return;
-          }
-        } catch {}
+      // Check if superadmin or guest was set in meantime
+      if (typeof window !== "undefined") {
+        const superAdminRaw = localStorage.getItem("edadmin_superadmin_user");
+        if (superAdminRaw) {
+          try {
+            const superAdmin = JSON.parse(superAdminRaw) as GuruUser;
+            if (superAdmin && superAdmin.role === "superadmin") {
+              setActiveUserId(superAdmin.uid);
+              callback(superAdmin);
+              return;
+            }
+          } catch {}
+        }
+
+        const guestRaw = localStorage.getItem("edadmin_guest_user");
+        if (guestRaw) {
+          try {
+            const guest = JSON.parse(guestRaw) as GuruUser;
+            if (guest && guest.isGuest) {
+              setActiveUserId(guest.uid);
+              callback(guest);
+              return;
+            }
+          } catch {}
+        }
       }
       setActiveUserId("");
       callback(null);

@@ -16,7 +16,8 @@ import {
   ChevronDown,
   CheckCircle2,
   School,
-  BookOpen
+  BookOpen,
+  Crown
 } from "lucide-react";
 import { Pengaturan, GuruUser } from "../types";
 
@@ -32,6 +33,7 @@ interface HeaderProps {
   onLogout?: () => void;
   onOpenSettings?: () => void;
   onOpenWelcomeGuide?: () => void;
+  onOpenSuperadmin?: () => void;
 }
 
 const TAB_TITLES: Record<string, string> = {
@@ -54,6 +56,7 @@ const TAB_TITLES: Record<string, string> = {
   ailainnya: "Generator AI Lainnya",
   laporan: "Pusat Cetak Laporan PDF",
   pengaturan: "Pengaturan & Profil Sekolah",
+  superadmin: "Panel Superadmin & Master Control",
   resetdb: "Kosongkan & Hapus Seluruh Isi Database"
 };
 
@@ -68,7 +71,8 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onLogout,
   onOpenSettings,
-  onOpenWelcomeGuide
+  onOpenWelcomeGuide,
+  onOpenSuperadmin
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -162,11 +166,19 @@ export const Header: React.FC<HeaderProps> = ({
               <img 
                 src={currentUser.photoURL} 
                 alt={displayName} 
-                className="w-6 h-6 rounded-lg object-cover ring-1 ring-cyan-400 shrink-0" 
+                className={`w-6 h-6 rounded-lg object-cover shrink-0 ${
+                  currentUser?.role === "superadmin" 
+                    ? "ring-2 ring-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]" 
+                    : "ring-1 ring-cyan-400"
+                }`} 
               />
             ) : (
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
-                {initial}
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0 ${
+                currentUser?.role === "superadmin"
+                  ? "bg-gradient-to-tr from-amber-600 via-orange-600 to-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]"
+                  : "bg-gradient-to-tr from-violet-600 to-cyan-500"
+              }`}>
+                {currentUser?.role === "superadmin" ? <Crown className="w-3.5 h-3.5 text-amber-200" /> : initial}
               </div>
             )}
 
@@ -174,8 +186,12 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[80px] sm:max-w-[130px] truncate leading-tight">
                 {displayName}
               </span>
-              <span className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 hidden sm:block leading-tight">
-                {currentUser?.isGuest ? "Tamu / Demo" : "Guru Aktif"}
+              <span className={`text-[9px] font-mono hidden sm:block leading-tight ${
+                currentUser?.role === "superadmin"
+                  ? "text-amber-500 dark:text-amber-400 font-bold"
+                  : "text-cyan-600 dark:text-cyan-400"
+              }`}>
+                {currentUser?.role === "superadmin" ? "👑 Superadmin" : (currentUser?.isGuest ? "Tamu / Demo" : "Guru Aktif")}
               </span>
             </div>
 
@@ -199,11 +215,19 @@ export const Header: React.FC<HeaderProps> = ({
                   <img 
                     src={currentUser.photoURL} 
                     alt={displayName} 
-                    className="w-11 h-11 rounded-xl object-cover ring-2 ring-cyan-400/60 shadow-md shrink-0" 
+                    className={`w-11 h-11 rounded-xl object-cover shrink-0 ${
+                      currentUser?.role === "superadmin"
+                        ? "ring-2 ring-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.5)]"
+                        : "ring-2 ring-cyan-400/60 shadow-md"
+                    }`} 
                   />
                 ) : (
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white font-extrabold text-lg shadow-lg shrink-0">
-                    {initial}
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-extrabold text-lg shadow-lg shrink-0 ${
+                    currentUser?.role === "superadmin"
+                      ? "bg-gradient-to-tr from-amber-600 via-orange-600 to-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                      : "bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-500"
+                  }`}>
+                    {currentUser?.role === "superadmin" ? <Crown className="w-6 h-6 text-amber-200" /> : initial}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
@@ -211,13 +235,23 @@ export const Header: React.FC<HeaderProps> = ({
                     <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                       {displayName}
                     </h4>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                    {currentUser?.role === "superadmin" ? (
+                      <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-500 shrink-0" />
+                    )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono">
                     {email}
                   </p>
-                  <span className="inline-block mt-0.5 text-[9px] px-2 py-0.5 rounded-full font-bold bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
-                    {currentUser?.isGuest ? "Sesi Tamu" : "Ruang Kerja Terisolasi"}
+                  <span className={`inline-block mt-0.5 text-[9px] px-2 py-0.5 rounded-full font-bold border ${
+                    currentUser?.role === "superadmin"
+                      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40"
+                      : "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30"
+                  }`}>
+                    {currentUser?.role === "superadmin"
+                      ? "👑 Super Administrator (Root)"
+                      : (currentUser?.isGuest ? "Sesi Tamu" : "Ruang Kerja Terisolasi")}
                   </span>
                 </div>
               </div>
@@ -259,6 +293,23 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Action Buttons */}
               <div className="pt-3 space-y-2">
+                {currentUser?.role === "superadmin" && onOpenSuperadmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      onOpenSuperadmin();
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 transition-colors cursor-pointer"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <Crown className="w-4 h-4 text-amber-500" />
+                      <span>Panel Kontrol Superadmin</span>
+                    </span>
+                    <span className="text-[10px] text-amber-500 font-mono">&rarr;</span>
+                  </button>
+                )}
+
                 {onOpenSettings && (
                   <button
                     type="button"
@@ -270,7 +321,7 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <span className="flex items-center space-x-2">
                       <Settings className="w-4 h-4 text-slate-500" />
-                      <span>Profil & Pengaturan Sekolah</span>
+                      <span>Profil &amp; Pengaturan Sekolah</span>
                     </span>
                     <span className="text-[10px] text-slate-400">&rarr;</span>
                   </button>
