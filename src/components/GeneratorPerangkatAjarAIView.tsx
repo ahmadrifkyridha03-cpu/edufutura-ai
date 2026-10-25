@@ -20,7 +20,8 @@ import {
   Plus,
   Trash2,
   Clock,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Wand2
 } from "lucide-react";
 import { Pengaturan, RmeMonthItem, AgendaSekolahItem } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
