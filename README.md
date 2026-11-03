@@ -18,3 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/d65f5706-fc61-4aab-9635-2d037
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+
+## Dokumentasi Pengembangan
+
+- [AGENTS.md](AGENTS.md) — aturan untuk AI agent & kontributor
+- [docs/](docs/README.md) — PRD, arsitektur, model data, API, template dokumen, desain, deploy, keamanan, roadmap, changelog
