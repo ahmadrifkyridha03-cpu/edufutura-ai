@@ -28,6 +28,7 @@ import { Siswa, Mapel, LogAbsensi, DataNilai, Jadwal } from "../types";
 import { AnalisisPerkembanganSiswa } from "./AnalisisPerkembanganSiswa";
 import { RincianNilaiSiswaModal } from "./RincianNilaiSiswaModal";
 import { RankingSiswaDashboard } from "./RankingSiswaDashboard";
+import { categorizeJenisPenilaian } from "./InputPenilaianView";
 import { HeroHologramOrb } from "./3d/HeroHologramOrb";
 import { Card3DTilt } from "./3d/Card3DTilt";
 
@@ -94,9 +95,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   });
 
-  // Calculate Average Grade per Mapel
+  // Calculate Average Grade per Mapel (exclude bonus points 'nilai_tambah' so 0-100 exam averages are accurate)
   const subjectAverages = mapelList.map((m) => {
-    const grades = nilaiList.filter((n) => n.mapel === m.namaMapel && n.nilai !== "" && typeof n.nilai === "number");
+    const grades = nilaiList.filter(
+      (n) =>
+        n.mapel === m.namaMapel &&
+        n.nilai !== "" &&
+        typeof n.nilai === "number" &&
+        categorizeJenisPenilaian(n.jenis) !== "nilai_tambah"
+    );
     if (grades.length === 0) return { name: m.namaMapel, avg: 0, count: 0 };
     const sum = grades.reduce((acc, curr) => acc + (curr.nilai as number), 0);
     return {

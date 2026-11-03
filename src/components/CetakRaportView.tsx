@@ -204,13 +204,22 @@ export const CetakRaportView: React.FC<CetakRaportViewProps> = ({
       );
       const valUas = uasItem ? Number(uasItem.nilai) : null;
 
-      // Calculate NA based on custom weights
+      // Nilai Tambah (Keaktifan, Public Speaking, Tugas Tambahan)
+      const nilaiTambahItems = gradesForMapel.filter(
+        (g) => categorizeJenisPenilaian(g.jenis) === "nilai_tambah" && g.nilai !== "" && g.nilai !== undefined && !isNaN(Number(g.nilai))
+      );
+      const nilaiTambah = nilaiTambahItems.length > 0
+        ? Number(nilaiTambahItems.reduce((a, b) => a + Number(b.nilai), 0).toFixed(1))
+        : 0;
+
+      // Calculate NA based on custom weights + Nilai Tambah (capped at 100)
       let nilaiAkhir: number | null = null;
-      if (avgSumatif !== null || valUts !== null || valUas !== null) {
+      if (avgSumatif !== null || valUts !== null || valUas !== null || nilaiTambah > 0) {
         const sPart = (avgSumatif !== null ? avgSumatif : 0) * (bobotSumatif / 100);
         const uPart = (valUts !== null ? valUts : 0) * (bobotUts / 100);
         const asPart = (valUas !== null ? valUas : 0) * (bobotUas / 100);
-        nilaiAkhir = Number((sPart + uPart + asPart).toFixed(1));
+        const rawAkhir = Number((sPart + uPart + asPart + nilaiTambah).toFixed(1));
+        nilaiAkhir = Math.min(100, rawAkhir);
       }
 
       // Predikat & Capaian Deskripsi Kurikulum Merdeka

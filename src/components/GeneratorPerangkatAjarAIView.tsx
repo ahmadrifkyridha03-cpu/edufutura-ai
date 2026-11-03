@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   FileCheck, 
   Sparkles, 
@@ -23,7 +23,7 @@ import {
   ArrowRightLeft,
   Wand2
 } from "lucide-react";
-import { Pengaturan, RmeMonthItem, AgendaSekolahItem } from "../types";
+import { Pengaturan, RmeMonthItem, AgendaSekolahItem, Siswa, Mapel } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
 import { buildKurikulumMerdekaDocument } from "../utils/kurikulumMerdekaBuilder";
 import { savePerangkatSyncData, extractSyncDataFromPerangkat } from "../utils/perangkatSyncHelper";
@@ -31,6 +31,8 @@ import { AiProgressStepper } from "./AiProgressStepper";
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
+  siswaList?: Siswa[];
+  mapelList?: Mapel[];
   onNavigateToModulAjar?: () => void;
 }
 
@@ -68,7 +70,15 @@ const DEFAULT_AGENDA_SEKOLAH: AgendaSekolahItem[] = [
 
 const DEFAULT_CATATAN_KALENDER = "Kalender Pendidikan berpedoman pada Keputusan Kepala Dinas Pendidikan Provinsi/Kab/Kota & Kebijakan Kurikulum Sekolah. Kegiatan Proyek Penguatan Profil Pelajar (P5) dilaksanakan secara blok/terpadu pada pekan terjadwal.";
 
-export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIViewProps> = ({ config, onNavigateToModulAjar }) => {
+export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIViewProps> = ({
+  config,
+  siswaList = [],
+  mapelList = [],
+  onNavigateToModulAjar
+}) => {
+  const availableKelas = Array.from(new Set(siswaList.map((s) => s.kelas).filter(Boolean))).sort();
+  const availableMapels = Array.from(new Set(mapelList.map((m) => m.namaMapel || m.nama).filter(Boolean))).sort();
+
   const [activeDoc, setActiveDoc] = useState<"rme" | "analisis_cp" | "tp" | "atp" | "prota" | "prosem" | "kktp">("rme");
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingProgress, setGeneratingProgress] = useState("");
@@ -86,9 +96,9 @@ export const GeneratorPerangkatAjarAIView: React.FC<GeneratorPerangkatAjarAIView
 
   const [formData, setFormData] = useState({
     school: config.Nama_Sekolah || "SMP Islam Athirah Baruga Antang",
-    subject: "Matematika",
-    singkatanMapel: "MTK",
-    level: "Fase D / Kelas VIII",
+    subject: availableMapels[0] || "Matematika",
+    singkatanMapel: (availableMapels[0] || "Matematika").slice(0, 3).toUpperCase(),
+    level: availableKelas[0] ? `Fase D / Kelas ${availableKelas[0]}` : "Fase D / Kelas VIII",
     year: "2026/2027",
     totalJp: "114 JP / Tahun",
     jpPerMinggu: "3 JP/Minggu",
@@ -110,6 +120,25 @@ Peserta didik mampu menghitung luas lingkaran, volume bangun ruang sisi datar, m
 Elemen 4 — Analisis Data dan Peluang:
 Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`
   });
+
+  useEffect(() => {
+    setFormData((prev) => {
+      const nextSubject =
+        (!prev.subject || prev.subject === "Matematika") && availableMapels.length > 0
+          ? availableMapels[0]
+          : prev.subject;
+      const nextLevel =
+        (!prev.level || prev.level === "Fase D / Kelas VIII") && availableKelas.length > 0
+          ? `Fase D / Kelas ${availableKelas[0]}`
+          : prev.level;
+      return {
+        ...prev,
+        subject: nextSubject,
+        singkatanMapel: nextSubject.slice(0, 3).toUpperCase(),
+        level: nextLevel,
+      };
+    });
+  }, [availableMapels.join(","), availableKelas.join(",")]);
 
   // State untuk Rencana Minggu Efektif (RME / RPE) & Kalender Pendidikan
   const [rmeGanjil, setRmeGanjil] = useState<RmeMonthItem[]>(DEFAULT_RME_GANJIL);
@@ -975,6 +1004,24 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
               onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-semibold outline-none focus:border-cyan-500"
             />
+            {availableMapels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {availableMapels.map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, subject: m, singkatanMapel: m.slice(0, 3).toUpperCase() })}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                      formData.subject === m
+                        ? "bg-cyan-600 text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/40"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -995,6 +1042,27 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
               onChange={(e) => setFormData({ ...formData, level: e.target.value })}
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-semibold outline-none focus:border-cyan-500"
             />
+            {availableKelas.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {availableKelas.map((k) => {
+                  const labelVal = `Fase D / Kelas ${k}`;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, level: labelVal })}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                        formData.level.includes(k)
+                          ? "bg-cyan-600 text-white"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/40"
+                      }`}
+                    >
+                      Kelas {k}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div>

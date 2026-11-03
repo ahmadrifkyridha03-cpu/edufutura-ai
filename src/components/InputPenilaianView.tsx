@@ -57,11 +57,23 @@ interface InputPenilaianViewProps {
   mapelList: Mapel[];
   nilaiList: DataNilai[];
   config: Pengaturan;
+  initialSubTab?: "master" | "input" | "nilai_tambah" | "rekap" | "riwayat";
 }
 
 // Helper untuk mengklasifikasikan jenis penilaian
-export const categorizeJenisPenilaian = (jenis: string): "sumatif" | "uts" | "uas" => {
+export const categorizeJenisPenilaian = (jenis: string): "sumatif" | "uts" | "uas" | "nilai_tambah" => {
   const clean = (jenis || "").toLowerCase().trim();
+  if (
+    clean.includes("nilai tambah") ||
+    clean.includes("nilai_tambah") ||
+    clean.includes("poin") ||
+    clean.includes("keaktifan") ||
+    clean.includes("bonus") ||
+    clean.includes("public speaking") ||
+    clean.includes("tambahan")
+  ) {
+    return "nilai_tambah";
+  }
   if (clean === "uts" || clean.includes("tengah semester") || clean === "sts") {
     return "uts";
   }
@@ -71,13 +83,15 @@ export const categorizeJenisPenilaian = (jenis: string): "sumatif" | "uts" | "ua
   return "sumatif";
 };
 
-// Hitung Nilai Akhir: Sumatif 50%, UTS 35%, UAS 15%
+// Hitung Nilai Akhir: (Sumatif 50% + UTS 35% + UAS 15%) + Nilai Tambah (Maks 100)
 export const hitungNilaiAkhirSiswa = (
   studentGrades: DataNilai[]
 ): {
   avgSumatif: number | null;
   valUts: number | null;
   valUas: number | null;
+  nilaiTambah: number;
+  nilaiMurni: number | null;
   nilaiAkhir: number | null;
   predikat: string;
   keterangan: string;
@@ -103,13 +117,23 @@ export const hitungNilaiAkhirSiswa = (
   );
   const valUas = uasItem ? Number(uasItem.nilai) : null;
 
-  // Perhitungan Nilai Akhir (50% Sumatif, 35% UTS, 15% UAS)
+  // Ambil seluruh poin Nilai Tambah (Keaktifan, Public Speaking, Tugas Tambahan)
+  const tambahItems = studentGrades.filter(
+    (g) => categorizeJenisPenilaian(g.jenis) === "nilai_tambah" && g.nilai !== "" && g.nilai !== undefined && !isNaN(Number(g.nilai))
+  );
+  const nilaiTambah = Number(
+    tambahItems.reduce((acc, g) => acc + Number(g.nilai || 0), 0).toFixed(1)
+  );
+
+  // Perhitungan Nilai Murni (50% Sumatif, 35% UTS, 15% UAS) & Nilai Akhir (+ Nilai Tambah, maks 100)
+  let nilaiMurni: number | null = null;
   let nilaiAkhir: number | null = null;
-  if (avgSumatif !== null || valUts !== null || valUas !== null) {
+  if (avgSumatif !== null || valUts !== null || valUas !== null || nilaiTambah > 0) {
     const sPart = (avgSumatif !== null ? avgSumatif : 0) * 0.50;
     const utsPart = (valUts !== null ? valUts : 0) * 0.35;
     const uasPart = (valUas !== null ? valUas : 0) * 0.15;
-    nilaiAkhir = Number((sPart + utsPart + uasPart).toFixed(1));
+    nilaiMurni = Number((sPart + utsPart + uasPart).toFixed(1));
+    nilaiAkhir = Math.min(100, Number((nilaiMurni + nilaiTambah).toFixed(1)));
   }
 
   // Tentukan Predikat & Keterangan
@@ -135,6 +159,8 @@ export const hitungNilaiAkhirSiswa = (
     avgSumatif,
     valUts,
     valUas,
+    nilaiTambah,
+    nilaiMurni,
     nilaiAkhir,
     predikat,
     keterangan
@@ -145,18 +171,25 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
   siswaList,
   mapelList,
   nilaiList,
-  config
+  config,
+  initialSubTab = "master"
 }) => {
-  // Navigation Tabs: master (Utama), input (Satuan), rekap (Leger Matriks), riwayat (Log)
-  const [activeSubTab, setActiveSubTab] = useState<"master" | "input" | "rekap" | "riwayat">("master");
+  // Navigation Tabs: master (Utama), input (Satuan), nilai_tambah (Poin Tambahan), rekap (Leger Matriks), riwayat (Log)
+  const [activeSubTab, setActiveSubTab] = useState<"master" | "input" | "nilai_tambah" | "rekap" | "riwayat">(initialSubTab);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
   
   // Selection States
   const kelasOptions = Array.from(new Set(siswaList.map((s) => s.kelas).filter(Boolean))).sort();
   const [selectedKelas, setSelectedKelas] = useState<string>(kelasOptions[0] || "");
-  const [selectedMapel, setSelectedMapel] = useState<string>(mapelList[0]?.namaMapel || "");
+  const [selectedMapel, setSelectedMapel] = useState<string>(mapelList[0]?.namaMapel || mapelList[0]?.nama || "");
 
   // -------------------------------------------------------------
-  // MASTER INPUT STATE (SEMUA SUMATIF, UTS, DAN UAS SEKALIGUS)
+  // MASTER INPUT STATE (SEMUA SUMATIF, UTS, UAS & NILAI TAMBAH SEKALIGUS)
   // -------------------------------------------------------------
   const [masterSumatifCols, setMasterSumatifCols] = useState<string[]>([
     "Sumatif 1",
@@ -170,6 +203,12 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
   const [masterPasteText, setMasterPasteText] = useState("");
   const [newSumatifColName, setNewSumatifColName] = useState("");
   const [isAddingColModalOpen, setIsAddingColModalOpen] = useState(false);
+
+  // -------------------------------------------------------------
+  // NILAI TAMBAH STATE (KEAKTIFAN, PUBLIC SPEAKING, TUGAS TAMBAHAN)
+  // -------------------------------------------------------------
+  const [kategoriNilaiTambah, setKategoriNilaiTambah] = useState<string>("Nilai Tambah - Public Speaking");
+  const [nilaiTambahMap, setNilaiTambahMap] = useState<Record<string, number | "">>({});
 
   // -------------------------------------------------------------
   // SINGLE INPUT STATE (SATUAN PER JENIS)
@@ -213,13 +252,13 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
       setSelectedKelas(kelasOptions[0]);
     }
     if (!selectedMapel && mapelList.length > 0) {
-      setSelectedMapel(mapelList[0].namaMapel);
+      setSelectedMapel(mapelList[0].namaMapel || mapelList[0].nama);
     }
     if (!rekapKelasFilter && kelasOptions.length > 0) {
       setRekapKelasFilter(kelasOptions[0]);
     }
     if (!rekapMapelFilter && mapelList.length > 0) {
-      setRekapMapelFilter(mapelList[0]?.namaMapel || "");
+      setRekapMapelFilter(mapelList[0]?.namaMapel || mapelList[0]?.nama || "");
     }
   }, [siswaList, mapelList]);
 
@@ -268,11 +307,36 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         // Nilai UAS
         const foundUas = studentGrades.find((g) => categorizeJenisPenilaian(g.jenis) === "uas");
         newMasterMap[s.id]["UAS"] = foundUas && foundUas.nilai !== "" && foundUas.nilai !== undefined ? foundUas.nilai : "";
+
+        // Nilai Tambah langsung (poin bonus master); kategori spesifik (mis. Nilai Tambah - Public Speaking) dihitung terpisah agar tidak terduplikasi saat simpan Master Input
+        const foundTambah = studentGrades.find((g) => g.jenis.toLowerCase() === "nilai tambah");
+        newMasterMap[s.id]["Nilai Tambah"] =
+          foundTambah && foundTambah.nilai !== "" && foundTambah.nilai !== undefined
+            ? foundTambah.nilai
+            : "";
       });
 
       setMasterGradesMap(newMasterMap);
     }
   }, [selectedKelas, selectedMapel, nilaiList, siswaList]);
+
+  // Sinkronisasi Nilai Tambah per Kategori
+  useEffect(() => {
+    if (selectedKelas && selectedMapel && kategoriNilaiTambah) {
+      const existingTambah = nilaiList.filter(
+        (n) =>
+          n.kelas === selectedKelas &&
+          n.mapel === selectedMapel &&
+          n.jenis.toLowerCase() === kategoriNilaiTambah.toLowerCase()
+      );
+      const map: Record<string, number | ""> = {};
+      studentsInClass.forEach((s) => {
+        const found = existingTambah.find((g) => g.idSiswa === s.id || g.idSiswa === s.nisn);
+        map[s.id] = found && found.nilai !== "" && found.nilai !== undefined ? found.nilai : "";
+      });
+      setNilaiTambahMap(map);
+    }
+  }, [selectedKelas, selectedMapel, kategoriNilaiTambah, nilaiList, siswaList]);
 
   // Sync single grade map
   useEffect(() => {
@@ -328,7 +392,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     showToastSuccess(`Kolom "${colToDelete}" dihapus dari tampilan master.`);
   };
 
-  // Unduh Template Master Excel (Semua Sumatif, UTS & UAS)
+  // Unduh Template Master Excel (Semua Sumatif, UTS, UAS & Nilai Tambah)
   const handleDownloadMasterTemplate = () => {
     if (studentsInClass.length === 0) {
       notifyUnduhError("Tidak ada siswa di kelas yang dipilih.");
@@ -336,7 +400,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     }
 
     try {
-      // Header: No, NISN, Nama Lengkap Siswa, Kelas, Sumatif 1..n, UTS, UAS
+      // Header: No, NISN, Nama Lengkap Siswa, Kelas, Sumatif 1..n, UTS, UAS, Nilai Tambah
       const headers = [
         "No",
         "NISN",
@@ -344,7 +408,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         "Kelas",
         ...masterSumatifCols,
         "UTS",
-        "UAS"
+        "UAS",
+        "Nilai Tambah"
       ];
 
       const rows = studentsInClass.map((s, idx) => {
@@ -357,7 +422,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
           s.kelas,
           ...sumatifVals,
           studentMap["UTS"] !== undefined ? studentMap["UTS"] : "",
-          studentMap["UAS"] !== undefined ? studentMap["UAS"] : ""
+          studentMap["UAS"] !== undefined ? studentMap["UAS"] : "",
+          studentMap["Nilai Tambah"] !== undefined ? studentMap["Nilai Tambah"] : ""
         ];
       });
 
@@ -369,7 +435,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         { wch: 10 },
         ...masterSumatifCols.map(() => ({ wch: 14 })),
         { wch: 12 },
-        { wch: 12 }
+        { wch: 12 },
+        { wch: 15 }
       ];
 
       const wb = XLSX.utils.book_new();
@@ -383,7 +450,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     }
   };
 
-  // Upload Master Excel Sekaligus (Membaca Semua Kolom Sumatif, UTS, UAS)
+  // Upload Master Excel Sekaligus (Membaca Semua Kolom Sumatif, UTS, UAS & Nilai Tambah)
   const handleUploadMasterExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -435,7 +502,9 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
           const str = String(cellVal || "").trim();
           const lower = str.toLowerCase();
 
-          if (lower.includes("uts") || lower.includes("sts") || lower.includes("tengah semester")) {
+          if (lower.includes("nilai tambah") || lower.includes("bonus") || lower.includes("keaktifan") || lower.includes("poin")) {
+            detectedColIndices.push({ key: "Nilai Tambah", index: cIdx });
+          } else if (lower.includes("uts") || lower.includes("sts") || lower.includes("tengah semester")) {
             detectedColIndices.push({ key: "UTS", index: cIdx });
           } else if (lower.includes("uas") || lower.includes("sas") || lower.includes("akhir semester")) {
             detectedColIndices.push({ key: "UAS", index: cIdx });
@@ -522,8 +591,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     const updatedMasterMap = { ...masterGradesMap };
     let filledCount = 0;
 
-    // Kolom urutan: Sumatif 1..n, UTS, UAS
-    const targetCols = [...masterSumatifCols, "UTS", "UAS"];
+    // Kolom urutan: Sumatif 1..n, UTS, UAS, Nilai Tambah
+    const targetCols = [...masterSumatifCols, "UTS", "UAS", "Nilai Tambah"];
 
     lines.forEach((line, lineIdx) => {
       if (lineIdx < studentsInClass.length) {
@@ -550,7 +619,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     showToastSuccess(`Berhasil menempelkan ${filledCount} nilai siswa ke tabel master!`);
   };
 
-  // Simpan Seluruh Nilai Master (Semua Sumatif, UTS, UAS) ke Firebase Sekaligus
+  // Simpan Seluruh Nilai Master (Semua Sumatif, UTS, UAS, dan Nilai Tambah) ke Firebase Sekaligus
   const handleSaveAllMasterGrades = async () => {
     if (!selectedKelas || !selectedMapel) {
       notifySimpanError("Silakan pilih Kelas dan Mata Pelajaran terlebih dahulu.");
@@ -564,17 +633,24 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
 
     const todayStr = new Date().toISOString().split("T")[0];
     const itemsToSave: DataNilai[] = [];
-    const allColsToSave = [...masterSumatifCols, "UTS", "UAS"];
+    const idsToDelete: string[] = [];
+    const allColsToSave = [...masterSumatifCols, "UTS", "UAS", "Nilai Tambah"];
 
     studentsInClass.forEach((s) => {
       const studentMap = masterGradesMap[s.id] || {};
+      const studentExisting = nilaiList.filter(
+        (n) => n.kelas === selectedKelas && n.mapel === selectedMapel && (n.idSiswa === s.id || n.idSiswa === s.nisn)
+      );
+
       allColsToSave.forEach((colKey) => {
         const val = studentMap[colKey];
+        const safeJenis = colKey.replace(/[\s\/-]+/g, "_");
+        const docId = `${selectedKelas}_${selectedMapel}_${safeJenis}_${s.id}`;
+        const existingRecord = studentExisting.find((g) => g.jenis.toLowerCase() === colKey.toLowerCase() || g.id === docId);
+
         if (val !== "" && val !== undefined && !isNaN(Number(val))) {
-          const safeJenis = colKey.replace(/[\s\/-]+/g, "_");
-          const docId = `${selectedKelas}_${selectedMapel}_${safeJenis}_${s.id}`;
           itemsToSave.push({
-            id: docId,
+            id: existingRecord?.id || docId,
             waktu: todayStr,
             jenis: colKey,
             mapel: selectedMapel,
@@ -584,22 +660,108 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
             nilai: Number(val),
             namaGuru: config.Nama_Guru || "Guru"
           });
+        } else if (existingRecord) {
+          idsToDelete.push(existingRecord.id);
         }
       });
     });
 
-    if (itemsToSave.length === 0) {
+    if (itemsToSave.length === 0 && idsToDelete.length === 0) {
       notifySimpanError("Belum ada nilai yang diinputkan.");
       return;
     }
 
     try {
-      await batchSaveDocuments(COLLECTIONS.DATA_NILAI, itemsToSave);
+      if (idsToDelete.length > 0) {
+        await batchDeleteDocuments(COLLECTIONS.DATA_NILAI, idsToDelete);
+      }
+      if (itemsToSave.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.DATA_NILAI, itemsToSave);
+      }
       notifySimpanSuccess(
-        `Berhasil menyimpan ${itemsToSave.length} rekaman nilai master (Sumatif, UTS, dan UAS) untuk Kelas ${selectedKelas} ke Firebase!`
+        `Berhasil memperbarui ${itemsToSave.length + idsToDelete.length} rekaman nilai master (Sumatif, UTS, UAS & Nilai Tambah) untuk Kelas ${selectedKelas} ke Firebase!`
       );
     } catch (err: any) {
       notifySimpanError(err.message || "Gagal menyimpan data nilai master ke database.");
+    }
+  };
+
+  // -------------------------------------------------------------
+  // NILAI TAMBAH HANDLERS (POIN KEAKTIFAN, PUBLIC SPEAKING, BONUS)
+  // -------------------------------------------------------------
+  const handleNilaiTambahChange = (studentId: string, value: string) => {
+    const num = value === "" ? "" : Math.min(30, Math.max(0, Number(value)));
+    setNilaiTambahMap((prev) => ({ ...prev, [studentId]: num }));
+  };
+
+  const handleQuickAddBonus = (studentId: string, delta: number) => {
+    setNilaiTambahMap((prev) => {
+      const curr = prev[studentId] === "" || prev[studentId] === undefined ? 0 : Number(prev[studentId]);
+      const next = delta === 0 ? "" : Math.min(30, Math.max(0, curr + delta));
+      return { ...prev, [studentId]: next };
+    });
+  };
+
+  const handleSaveNilaiTambah = async () => {
+    if (!selectedKelas || !selectedMapel || !kategoriNilaiTambah) {
+      notifySimpanError("Silakan pilih Kelas, Mata Pelajaran, dan Kategori Nilai Tambah terlebih dahulu.");
+      return;
+    }
+    if (studentsInClass.length === 0) {
+      notifySimpanError("Belum ada siswa di kelas ini.");
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const safeJenis = kategoriNilaiTambah.replace(/[\s\/-]+/g, "_");
+    const itemsToSave: DataNilai[] = [];
+    const idsToDelete: string[] = [];
+
+    studentsInClass.forEach((s) => {
+      const val = nilaiTambahMap[s.id];
+      const docId = `${selectedKelas}_${selectedMapel}_${safeJenis}_${s.id}`;
+      const existingRecord = nilaiList.find(
+        (n) =>
+          n.kelas === selectedKelas &&
+          n.mapel === selectedMapel &&
+          (n.idSiswa === s.id || n.idSiswa === s.nisn) &&
+          (n.jenis.toLowerCase() === kategoriNilaiTambah.toLowerCase() || n.id === docId)
+      );
+
+      if (val !== undefined && val !== "" && Number(val) > 0) {
+        itemsToSave.push({
+          id: existingRecord?.id || docId,
+          waktu: todayStr,
+          jenis: kategoriNilaiTambah,
+          mapel: selectedMapel,
+          kelas: selectedKelas,
+          idSiswa: s.id,
+          namaSiswa: s.nama,
+          nilai: Number(val),
+          namaGuru: config.Nama_Guru || "Guru"
+        });
+      } else if (existingRecord) {
+        idsToDelete.push(existingRecord.id);
+      }
+    });
+
+    if (itemsToSave.length === 0 && idsToDelete.length === 0) {
+      notifySimpanError("Belum ada poin Nilai Tambah yang diberikan untuk siswa.");
+      return;
+    }
+
+    try {
+      if (idsToDelete.length > 0) {
+        await batchDeleteDocuments(COLLECTIONS.DATA_NILAI, idsToDelete);
+      }
+      if (itemsToSave.length > 0) {
+        await batchSaveDocuments(COLLECTIONS.DATA_NILAI, itemsToSave);
+      }
+      notifySimpanSuccess(
+        `Berhasil menyimpan perubahan poin "${kategoriNilaiTambah}" (${itemsToSave.length} disimpan${idsToDelete.length > 0 ? `, ${idsToDelete.length} direset` : ""}) untuk Kelas ${selectedKelas} ke Firebase!`
+      );
+    } catch (err: any) {
+      notifySimpanError(err.message || "Gagal menyimpan poin Nilai Tambah.");
     }
   };
 
@@ -835,15 +997,17 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     const allSumatifAvg: number[] = [];
     const allUts: number[] = [];
     const allUas: number[] = [];
+    const allTambah: number[] = [];
 
     const studentRowsHtml = rekapStudents.map((s, idx) => {
       const studentGrades = relevantGradesForRekap.filter((g) => g.idSiswa === s.id || g.idSiswa === s.nisn);
-      const { avgSumatif, valUts, valUas, nilaiAkhir, predikat, keterangan } = hitungNilaiAkhirSiswa(studentGrades);
+      const { avgSumatif, valUts, valUas, nilaiTambah, nilaiAkhir, predikat, keterangan } = hitungNilaiAkhirSiswa(studentGrades);
 
       if (nilaiAkhir !== null) allNa.push(nilaiAkhir);
       if (avgSumatif !== null) allSumatifAvg.push(avgSumatif);
       if (valUts !== null) allUts.push(valUts);
       if (valUas !== null) allUas.push(valUas);
+      if (nilaiTambah > 0) allTambah.push(nilaiTambah);
 
       const sumatifCells = displaySumatifCols.map((colName) => {
         const found = studentGrades.find((g) => g.jenis === colName);
@@ -873,6 +1037,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
           <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #eff6ff; font-weight: 800; color: #1d4ed8;">${avgSumatif !== null ? avgSumatif : "-"}</td>
           <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #fffbeb; font-weight: bold; color: #b45309;">${valUts !== null ? valUts : "-"}</td>
           <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #faf5ff; font-weight: bold; color: #7e22ce;">${valUas !== null ? valUas : "-"}</td>
+          <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #f0fdfa; font-weight: 800; color: #0f766e;">${nilaiTambah > 0 ? `+${nilaiTambah}` : "0"}</td>
           <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #dcfce7; font-weight: 900; color: #065f46; font-size: 10.5pt;">${nilaiAkhir !== null ? nilaiAkhir : "-"}</td>
           <td style="padding: 4px 4px; text-align: center; border: 1px solid #cbd5e1;">
             <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 9pt; background-color: ${predikatBg}; color: ${predikatText};">
@@ -888,6 +1053,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
     const avgSum = allSumatifAvg.length > 0 ? (allSumatifAvg.reduce((a, b) => a + b, 0) / allSumatifAvg.length).toFixed(1) : "-";
     const avgUtsVal = allUts.length > 0 ? (allUts.reduce((a, b) => a + b, 0) / allUts.length).toFixed(1) : "-";
     const avgUasVal = allUas.length > 0 ? (allUas.reduce((a, b) => a + b, 0) / allUas.length).toFixed(1) : "-";
+    const avgTambahVal = allTambah.length > 0 ? `+${(allTambah.reduce((a, b) => a + b, 0) / rekapStudents.length).toFixed(1)}` : "0";
 
     const colSpanBeforeSum = 4;
     const sumatifColsHeader = displaySumatifCols.map(col => `
@@ -959,7 +1125,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         </div>
 
         <div class="formula-banner">
-          Formula Perhitungan Nilai Akhir (NA) = (Rata-Rata Sumatif Materi &times; 50%) + (Nilai UTS &times; 35%) + (Nilai UAS &times; 15%)
+          Formula Perhitungan Nilai Akhir (NA) = (Rata-Rata Sumatif Materi &times; 50%) + (Nilai UTS &times; 35%) + (Nilai UAS &times; 15%) + Poin Nilai Tambah (Maks 100)
         </div>
 
         <!-- Tabel Leger Matriks Multi-Level Warna Penuh -->
@@ -973,6 +1139,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               <th colspan="${displaySumatifCols.length + 1}" style="background-color: #1e3a8a; color: #ffffff; text-align: center; vertical-align: middle; padding: 8px 6px; border: 1px solid #1e40af; font-weight: 800;">📘 SUMATIF MATERI (BOBOT 50%)</th>
               <th colspan="1" style="background-color: #b45309; color: #ffffff; text-align: center; vertical-align: middle; padding: 8px 6px; border: 1px solid #92400e; font-weight: 800;">📝 UTS (35%)</th>
               <th colspan="1" style="background-color: #6b21a8; color: #ffffff; text-align: center; vertical-align: middle; padding: 8px 6px; border: 1px solid #581c87; font-weight: 800;">🎓 UAS (15%)</th>
+              <th colspan="1" style="background-color: #0f766e; color: #ffffff; text-align: center; vertical-align: middle; padding: 8px 6px; border: 1px solid #115e59; font-weight: 800;">🌟 TAMBAH (+)</th>
               <th colspan="3" style="background-color: #065f46; color: #ffffff; text-align: center; vertical-align: middle; padding: 8px 6px; border: 1px solid #047857; font-weight: 800;">🏆 HASIL AKHIR & CAPAIAN</th>
             </tr>
             <tr style="text-align: center; font-size: 8pt; font-weight: bold;">
@@ -980,6 +1147,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               <th style="background-color: #dbeafe; color: #172554; padding: 6px 4px; border: 1px solid #93c5fd; font-weight: 900;">Rata (50%)</th>
               <th style="background-color: #fef3c7; color: #78350f; padding: 6px 4px; border: 1px solid #fde68a; font-weight: bold;">Nilai UTS</th>
               <th style="background-color: #f3e8ff; color: #581c87; padding: 6px 4px; border: 1px solid #e9d5ff; font-weight: bold;">Nilai UAS</th>
+              <th style="background-color: #ccfbf1; color: #134e4a; padding: 6px 4px; border: 1px solid #99f6e4; font-weight: bold;">Poin (+)</th>
               <th style="background-color: #d1fae5; color: #064e3b; padding: 6px 4px; border: 1px solid #a7f3d0; font-weight: 900;">Nilai Akhir</th>
               <th style="background-color: #ecfdf5; color: #065f46; padding: 6px 4px; border: 1px solid #a7f3d0; font-weight: bold; width: 60px;">Predikat</th>
               <th style="background-color: #ecfdf5; color: #065f46; padding: 6px 6px; border: 1px solid #a7f3d0; font-weight: bold; min-width: 140px;">Keterangan</th>
@@ -995,6 +1163,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #dbeafe; color: #1d4ed8;">${avgSum}</td>
               <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #fef3c7; color: #b45309;">${avgUtsVal}</td>
               <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #f3e8ff; color: #7e22ce;">${avgUasVal}</td>
+              <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #ccfbf1; color: #0f766e;">${avgTambahVal}</td>
               <td style="padding: 6px 4px; text-align: center; border: 1px solid #cbd5e1; background-color: #d1fae5; color: #065f46; font-size: 9.5pt;">${avgNa}</td>
               <td colspan="2" style="padding: 6px 8px; text-align: center; border: 1px solid #cbd5e1; color: #475569;">
                 Tercapai: ${allNa.filter(n => n >= 70).length} / ${rekapStudents.length} Siswa
@@ -1067,7 +1236,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         ...displaySumatifCols.map(() => "SUMATIF MATERI (50%)"),
         "SUMATIF MATERI (50%)", 
         "UTS (35%)", 
-        "UAS (15%)", 
+        "UAS (15%)",
+        "NILAI TAMBAH (+)",
         "HASIL AKHIR & CAPAIAN",
         "HASIL AKHIR & CAPAIAN", 
         "HASIL AKHIR & CAPAIAN"
@@ -1081,7 +1251,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         ...displaySumatifCols, 
         "Rata-Rata (50%)", 
         "Nilai UTS", 
-        "Nilai UAS", 
+        "Nilai UAS",
+        "Poin Bonus (+)",
         "Nilai Akhir (NA)", 
         "Predikat", 
         "Keterangan Capaian"
@@ -1089,7 +1260,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
 
       const dataRows = rekapStudents.map((s, idx) => {
         const studentGrades = relevantGradesForRekap.filter((g) => g.idSiswa === s.id || g.idSiswa === s.nisn);
-        const { avgSumatif, valUts, valUas, nilaiAkhir, predikat, keterangan } = hitungNilaiAkhirSiswa(studentGrades);
+        const { avgSumatif, valUts, valUas, nilaiTambah, nilaiAkhir, predikat, keterangan } = hitungNilaiAkhirSiswa(studentGrades);
 
         const sumatifValues = displaySumatifCols.map((col) => {
           const found = studentGrades.find((g) => g.jenis === col);
@@ -1105,6 +1276,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
           avgSumatif !== null ? avgSumatif : "-",
           valUts !== null ? valUts : "-",
           valUas !== null ? valUas : "-",
+          nilaiTambah > 0 ? `+${nilaiTambah}` : 0,
           nilaiAkhir !== null ? nilaiAkhir : "-",
           predikat,
           keterangan
@@ -1122,8 +1294,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
 
       const sumatifColCount = displaySumatifCols.length;
       ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 6 + sumatifColCount } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 6 + sumatifColCount } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 + sumatifColCount } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 7 + sumatifColCount } },
         { s: { r: 3, c: 0 }, e: { r: 4, c: 0 } },
         { s: { r: 3, c: 1 }, e: { r: 4, c: 1 } },
         { s: { r: 3, c: 2 }, e: { r: 4, c: 2 } },
@@ -1131,7 +1303,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
         { s: { r: 3, c: 4 }, e: { r: 3, c: 4 + sumatifColCount } },
         { s: { r: 3, c: 5 + sumatifColCount }, e: { r: 3, c: 5 + sumatifColCount } },
         { s: { r: 3, c: 6 + sumatifColCount }, e: { r: 3, c: 6 + sumatifColCount } },
-        { s: { r: 3, c: 7 + sumatifColCount }, e: { r: 3, c: 9 + sumatifColCount } }
+        { s: { r: 3, c: 7 + sumatifColCount }, e: { r: 3, c: 7 + sumatifColCount } },
+        { s: { r: 3, c: 8 + sumatifColCount }, e: { r: 3, c: 10 + sumatifColCount } }
       ];
 
       const wb = XLSX.utils.book_new();
@@ -1226,43 +1399,55 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
       <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 gap-1">
         <button
           onClick={() => setActiveSubTab("master")}
-          className={`flex-1 min-w-[170px] py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+          className={`flex-1 min-w-[160px] py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             activeSubTab === "master"
               ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
               : "text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-white"
           }`}
         >
           <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-          <span>Format Master Input (Semua Ujian Sekaligus)</span>
+          <span>Format Master Input</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("nilai_tambah")}
+          className={`flex-1 min-w-[165px] py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+            activeSubTab === "nilai_tambah"
+              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md"
+              : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+          }`}
+        >
+          <Plus className="w-4 h-4" />
+          <span>Nilai Tambah (Keaktifan & Public Speaking)</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("input")}
-          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+          className={`flex-1 min-w-[135px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             activeSubTab === "input"
               ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <Star className="w-4 h-4 text-amber-500" />
-          <span>Input Satuan (Per Jenis)</span>
+          <span>Input Satuan</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("rekap")}
-          className={`flex-1 min-w-[150px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+          className={`flex-1 min-w-[140px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             activeSubTab === "rekap"
               ? "bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <Table className="w-4 h-4 text-emerald-500" />
-          <span>Rekap Matriks (Leger Nilai)</span>
+          <span>Rekap Leger</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab("riwayat")}
-          className={`flex-1 min-w-[130px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+          className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             activeSubTab === "riwayat"
               ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -1290,7 +1475,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                 </h2>
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Kelola dan unggah semua nilai <b>Sumatif Materi (50%)</b>, <b>UTS (35%)</b>, dan <b>UAS (15%)</b> dalam satu format tabel sekaligus.
+                Kelola dan unggah semua nilai <b>Sumatif Materi (50%)</b>, <b>UTS (35%)</b>, <b>UAS (15%)</b>, dan <b>Nilai Tambah (+)</b> dalam satu format tabel sekaligus.
               </p>
             </div>
 
@@ -1300,7 +1485,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                 type="button"
                 onClick={handleDownloadMasterTemplate}
                 className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs"
-                title="Unduh format master Excel lengkap dengan semua kolom Sumatif, UTS, dan UAS"
+                title="Unduh format master Excel lengkap dengan semua kolom Sumatif, UTS, UAS & Nilai Tambah"
               >
                 <Download className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>Unduh Format Master Excel</span>
@@ -1310,7 +1495,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                 type="button"
                 onClick={() => masterFileInputRef.current?.click()}
                 className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-2 shadow-md transition-all cursor-pointer hover:scale-101"
-                title="Unggah file Master Excel untuk mengisi nilai Sumatif, UTS, dan UAS sekaligus"
+                title="Unggah file Master Excel untuk mengisi nilai Sumatif, UTS, UAS & Nilai Tambah sekaligus"
               >
                 <Upload className="w-4 h-4" />
                 <span>Upload File Master Excel</span>
@@ -1365,8 +1550,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               >
                 <option value="">-- Pilih Mapel --</option>
                 {mapelList.map((m) => (
-                  <option key={m.id} value={m.namaMapel}>
-                    {m.namaMapel}
+                  <option key={m.id} value={m.namaMapel || m.nama}>
+                    {m.namaMapel || m.nama}
                   </option>
                 ))}
               </select>
@@ -1386,8 +1571,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
 
             <div>
               <div className="p-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
-                <span className="font-extrabold text-blue-600 block">Bobot Penilaian Otomatis:</span>
-                Sumatif <b>50%</b> + UTS <b>35%</b> + UAS <b>15%</b>
+                <span className="font-extrabold text-blue-600 block">Formula Otomatis:</span>
+                50% Sumatif + 35% UTS + 15% UAS + <b className="text-teal-600">Nilai Tambah</b>
               </div>
             </div>
           </div>
@@ -1399,8 +1584,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
             aria-labelledby="master-table-caption"
             className="table-wrapper custom-scrollbar overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
           >
-            <span id="master-table-caption" className="sr-only">Tabel Input Master Nilai Sumatif, UTS, dan UAS</span>
-            <table className="w-full text-left text-xs border-collapse min-w-[1200px]">
+            <span id="master-table-caption" className="sr-only">Tabel Input Master Nilai Sumatif, UTS, UAS, dan Nilai Tambah</span>
+            <table className="w-full text-left text-xs border-collapse min-w-[1260px]">
               <thead className="sticky top-0 z-10 backdrop-blur-md">
                 <tr className="bg-slate-900/95 text-white uppercase text-[11px] tracking-wider border-b border-slate-700">
                   <th rowSpan={2} className="p-3 text-center w-12 border-r border-slate-700 font-mono">No</th>
@@ -1429,6 +1614,14 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                     className="p-2.5 text-center bg-purple-800 border-r border-purple-700 text-white font-black"
                   >
                     🎓 UAS (15%)
+                  </th>
+
+                  {/* Header Group Nilai Tambah */}
+                  <th 
+                    colSpan={1} 
+                    className="p-2.5 text-center bg-teal-700 border-r border-teal-600 text-white font-black"
+                  >
+                    🌟 NILAI TAMBAH (+)
                   </th>
 
                   {/* Header Group Hasil Akhir */}
@@ -1477,6 +1670,11 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                     Nilai UAS
                   </th>
 
+                  {/* Nilai Tambah */}
+                  <th className="p-2 text-center min-w-[100px] border-r border-slate-300 dark:border-slate-700 bg-teal-50 dark:bg-teal-950/40 text-teal-950 dark:text-teal-200">
+                    Poin Bonus (+)
+                  </th>
+
                   {/* Nilai Akhir */}
                   <th className="p-2 text-center min-w-[95px] border-r border-slate-200 dark:border-slate-700 bg-emerald-100 dark:bg-emerald-950 text-emerald-950 dark:text-emerald-100 font-black">
                     Nilai Akhir
@@ -1497,13 +1695,13 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {!selectedKelas || !selectedMapel ? (
                   <tr>
-                    <td colSpan={masterSumatifCols.length + 9} className="p-12 text-center text-slate-400">
+                    <td colSpan={masterSumatifCols.length + 10} className="p-12 text-center text-slate-400">
                       Silakan pilih Kelas dan Mata Pelajaran terlebih dahulu.
                     </td>
                   </tr>
                 ) : studentsInClass.length === 0 ? (
                   <tr>
-                    <td colSpan={masterSumatifCols.length + 9} className="p-12 text-center text-slate-400">
+                    <td colSpan={masterSumatifCols.length + 10} className="p-12 text-center text-slate-400">
                       Tidak ada siswa di Kelas {selectedKelas}.
                     </td>
                   </tr>
@@ -1529,13 +1727,32 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                       ? Number(studentMap["UAS"])
                       : null;
 
-                    // Perhitungan Nilai Akhir (50% Sumatif, 35% UTS, 15% UAS)
+                    const masterValTambah = studentMap["Nilai Tambah"] !== "" && studentMap["Nilai Tambah"] !== undefined && !isNaN(Number(studentMap["Nilai Tambah"]))
+                      ? Number(studentMap["Nilai Tambah"])
+                      : 0;
+
+                    const extraCategoryBonus = nilaiList
+                      .filter(
+                        (g) =>
+                          g.kelas === selectedKelas &&
+                          g.mapel === selectedMapel &&
+                          (g.idSiswa === s.id || g.idSiswa === s.nisn) &&
+                          categorizeJenisPenilaian(g.jenis) === "nilai_tambah" &&
+                          g.jenis.toLowerCase() !== "nilai tambah" &&
+                          g.nilai !== "" &&
+                          g.nilai !== undefined
+                      )
+                      .reduce((acc, g) => acc + Number(g.nilai || 0), 0);
+
+                    const valTambah = masterValTambah + extraCategoryBonus;
+
+                    // Perhitungan Nilai Akhir (50% Sumatif, 35% UTS, 15% UAS + Nilai Tambah, maks 100)
                     let na: number | null = null;
-                    if (avgSumatif !== null || valUts !== null || valUas !== null) {
+                    if (avgSumatif !== null || valUts !== null || valUas !== null || valTambah > 0) {
                       const sPart = (avgSumatif !== null ? avgSumatif : 0) * 0.50;
                       const uPart = (valUts !== null ? valUts : 0) * 0.35;
                       const asPart = (valUas !== null ? valUas : 0) * 0.15;
-                      na = Number((sPart + uPart + asPart).toFixed(1));
+                      na = Math.min(100, Number((sPart + uPart + asPart + valTambah).toFixed(1)));
                     }
 
                     const predikat = na === null ? "-" : na >= 88 ? "A" : na >= 78 ? "B" : na >= 70 ? "C" : "D";
@@ -1593,7 +1810,27 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                           />
                         </td>
 
-                        {/* Live Nilai Akhir (50% Sumatif, 35% UTS, 15% UAS) */}
+                        {/* Editable Input Nilai Tambah (+) */}
+                        <td className="p-1.5 text-center border-r border-slate-300 dark:border-slate-700 bg-teal-50/30">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              placeholder="+0"
+                              value={studentMap["Nilai Tambah"] !== undefined ? studentMap["Nilai Tambah"] : ""}
+                              onChange={(e) => handleMasterGradeChange(s.id, "Nilai Tambah", e.target.value)}
+                              className="w-16 text-center px-1.5 py-1 text-xs font-bold border rounded-lg bg-white dark:bg-slate-900 border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 outline-none focus:border-teal-500"
+                            />
+                            {extraCategoryBonus > 0 && (
+                              <span className="text-[9px] font-bold text-teal-700 dark:text-teal-300 bg-teal-100/80 dark:bg-teal-900/50 px-1.5 py-0.5 rounded" title="Poin dari sub-tab Kategori Nilai Tambah (Keaktifan & Public Speaking)">
+                                +{extraCategoryBonus} kat.
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Live Nilai Akhir (50% Sumatif, 35% UTS, 15% UAS + Nilai Tambah) */}
                         <td className="p-2 text-center font-black text-xs border-r border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                           {na !== null ? (
                             na >= 90 ? (
@@ -1677,7 +1914,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 border-t border-slate-200 dark:border-slate-700">
             <div className="text-xs text-slate-500">
               Total Siswa: <b>{studentsInClass.length}</b> orang | Kolom Aktif:{" "}
-              <b>{masterSumatifCols.length} Sumatif</b> + <b>UTS</b> + <b>UAS</b>
+              <b>{masterSumatifCols.length} Sumatif</b> + <b>UTS</b> + <b>UAS</b> + <b>Nilai Tambah</b>
             </div>
 
             <button
@@ -1686,7 +1923,226 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               className="w-full sm:w-auto bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 disabled:opacity-50 text-white px-8 py-3.5 rounded-xl text-xs font-black flex items-center justify-center space-x-2 shadow-xl cursor-pointer transition-all hover:scale-101"
             >
               <Save className="w-4 h-4" />
-              <span>SIMPAN SELURUH NILAI MASTER (SUMATIF, UTS & UAS) KE FIREBASE</span>
+              <span>SIMPAN SELURUH NILAI MASTER (SUMATIF, UTS, UAS & NILAI TAMBAH) KE FIREBASE</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUB-TAB NILAI TAMBAH: POIN KEAKTIFAN, PUBLIC SPEAKING & TUGAS TAMBAHAN    */}
+      {/* ========================================================================= */}
+      {activeSubTab === "nilai_tambah" && (
+        <div className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200 dark:border-slate-800 space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs">
+                  FITUR NILAI TAMBAH (+)
+                </span>
+                <h2 className="text-lg font-black text-slate-800 dark:text-white">
+                  Poin Nilai Tambah, Keaktifan & Public Speaking Siswa
+                </h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Berikan poin tambahan atas <b>Unjuk Kerja Public Speaking</b>, <b>Keaktifan Diskusi Kelas</b>, atau <b>Tugas Pengayaan</b>. Poin otomatis ditambahkan ke Nilai Murni (Sumatif 50% + UTS 35% + UAS 15%) hingga maksimal 100.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleSaveNilaiTambah}
+              disabled={studentsInClass.length === 0}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white px-6 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-md cursor-pointer transition-all shrink-0"
+            >
+              <Save className="w-4 h-4" />
+              <span>Simpan Poin Nilai Tambah ke Firebase</span>
+            </button>
+          </div>
+
+          {/* Filter Kelas, Mapel, dan Kategori Nilai Tambah */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Pilih Kelas Diampu *</label>
+              <select
+                value={selectedKelas}
+                onChange={(e) => setSelectedKelas(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold border rounded-xl bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 outline-none"
+              >
+                <option value="">-- Pilih Kelas --</option>
+                {kelasOptions.map((k) => (
+                  <option key={k} value={k}>
+                    Kelas {k} ({siswaList.filter((s) => s.kelas === k).length} Siswa)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1.5">Pilih Mata Pelajaran *</label>
+              <select
+                value={selectedMapel}
+                onChange={(e) => setSelectedMapel(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold border rounded-xl bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 outline-none"
+              >
+                <option value="">-- Pilih Mapel --</option>
+                {mapelList.map((m) => (
+                  <option key={m.id} value={m.namaMapel || m.nama}>
+                    {m.namaMapel || m.nama}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase mb-1.5">
+                Kategori Nilai Tambah / Keaktifan *
+              </label>
+              <select
+                value={kategoriNilaiTambah}
+                onChange={(e) => setKategoriNilaiTambah(e.target.value)}
+                className="w-full px-3 py-2 text-xs font-bold border rounded-xl bg-emerald-50/70 dark:bg-slate-800 border-emerald-400 dark:border-emerald-700 text-emerald-950 dark:text-emerald-200 outline-none"
+              >
+                <option value="Nilai Tambah - Public Speaking">🎤 Nilai Tambah - Public Speaking (Program Khas)</option>
+                <option value="Nilai Tambah - Keaktifan Kelas">🙋 Nilai Tambah - Keaktifan Diskusi Kelas</option>
+                <option value="Nilai Tambah - Tugas Tambahan">📚 Nilai Tambah - Tugas Tambahan / Pengayaan</option>
+                <option value="Nilai Tambah - Sikap & Spiritualisasi">🌟 Nilai Tambah - Sikap & Spiritualisasi</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Tabel Poin Nilai Tambah Siswa */}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+            <table className="w-full text-left text-xs border-collapse min-w-[920px]">
+              <thead>
+                <tr className="bg-slate-900 text-white uppercase text-[11px] tracking-wider">
+                  <th className="p-3 text-center w-12 border-r border-slate-700">No</th>
+                  <th className="p-3 text-center w-28 border-r border-slate-700">NISN</th>
+                  <th className="p-3 min-w-[190px] border-r border-slate-700">Nama Lengkap Siswa</th>
+                  <th className="p-3 text-center w-28 border-r border-slate-700 bg-blue-900">Nilai Murni</th>
+                  <th className="p-3 text-center min-w-[260px] border-r border-slate-700 bg-teal-800">
+                    Beri Poin: {kategoriNilaiTambah.replace("Nilai Tambah - ", "")}
+                  </th>
+                  <th className="p-3 text-center w-32 border-r border-slate-700 bg-teal-900">Total Tambah (+)</th>
+                  <th className="p-3 text-center w-36 bg-emerald-800">Nilai Akhir (Live)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {studentsInClass.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-10 text-center text-slate-400">
+                      Belum ada siswa pada kelas yang dipilih.
+                    </td>
+                  </tr>
+                ) : (
+                  studentsInClass.map((s, idx) => {
+                    const studentGrades = nilaiList.filter(
+                      (n) =>
+                        n.kelas === selectedKelas &&
+                        n.mapel === selectedMapel &&
+                        (n.idSiswa === s.id || n.idSiswa === s.nisn)
+                    );
+                    const { nilaiMurni } = hitungNilaiAkhirSiswa(studentGrades);
+                    const otherTambah = studentGrades
+                      .filter(
+                        (g) =>
+                          categorizeJenisPenilaian(g.jenis) === "nilai_tambah" &&
+                          g.jenis.toLowerCase() !== kategoriNilaiTambah.toLowerCase()
+                      )
+                      .reduce((acc, g) => acc + Number(g.nilai || 0), 0);
+
+                    const currentCatVal =
+                      nilaiTambahMap[s.id] !== "" && nilaiTambahMap[s.id] !== undefined
+                        ? Number(nilaiTambahMap[s.id])
+                        : 0;
+                    const totalBonus = Number((otherTambah + currentCatVal).toFixed(1));
+                    const baseMurni = nilaiMurni !== null ? nilaiMurni : 0;
+                    const finalScore =
+                      nilaiMurni !== null || totalBonus > 0
+                        ? Math.min(100, Number((baseMurni + totalBonus).toFixed(1)))
+                        : null;
+
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="p-2.5 text-center font-semibold text-slate-500 border-r border-slate-200 dark:border-slate-800">
+                          {idx + 1}
+                        </td>
+                        <td className="p-2.5 text-center font-mono text-slate-600 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800">
+                          {s.nisn || "-"}
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-800 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">
+                          {s.nama}
+                        </td>
+                        <td className="p-2.5 text-center font-bold text-blue-700 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800 bg-blue-50/30 dark:bg-blue-950/20">
+                          {nilaiMurni !== null ? nilaiMurni : "-"}
+                        </td>
+                        <td className="p-2.5 border-r border-slate-200 dark:border-slate-800 bg-teal-50/30 dark:bg-teal-950/20">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            {[1, 2, 3, 5].map((pts) => (
+                              <button
+                                key={pts}
+                                type="button"
+                                onClick={() => handleQuickAddBonus(s.id, pts)}
+                                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[11px] cursor-pointer shadow-2xs transition-all active:scale-95"
+                                title={`Tambah +${pts} poin ke ${s.nama}`}
+                              >
+                                +{pts}
+                              </button>
+                            ))}
+                            <input
+                              type="number"
+                              min="0"
+                              max="30"
+                              placeholder="0"
+                              value={nilaiTambahMap[s.id] !== undefined ? nilaiTambahMap[s.id] : ""}
+                              onChange={(e) => handleNilaiTambahChange(s.id, e.target.value)}
+                              className="w-16 text-center px-2 py-1 text-xs font-black border-2 rounded-lg bg-white dark:bg-slate-900 border-teal-400 text-teal-800 dark:text-teal-200 outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAddBonus(s.id, 0)}
+                              className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-rose-100 hover:text-rose-700 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold cursor-pointer"
+                              title="Reset poin kategori ini ke 0"
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-2.5 text-center font-black text-teal-700 dark:text-teal-300 border-r border-slate-200 dark:border-slate-800">
+                          {totalBonus > 0 ? (
+                            <span className="px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 font-mono">
+                              +{totalBonus}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">0</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-center font-black text-sm text-emerald-700 dark:text-emerald-300 bg-emerald-50/40 dark:bg-emerald-950/30">
+                          {finalScore !== null ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-200/80 dark:bg-emerald-900 text-emerald-950 dark:text-emerald-200 font-mono">
+                              {finalScore}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveNilaiTambah}
+              disabled={studentsInClass.length === 0}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 text-white px-7 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>Simpan Seluruh Poin "{kategoriNilaiTambah}" ke Firebase</span>
             </button>
           </div>
         </div>
@@ -1747,8 +2203,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               >
                 <option value="">-- Pilih Mapel --</option>
                 {mapelList.map((m) => (
-                  <option key={m.id} value={m.namaMapel}>
-                    {m.namaMapel}
+                  <option key={m.id} value={m.namaMapel || m.nama}>
+                    {m.namaMapel || m.nama}
                   </option>
                 ))}
               </select>
@@ -1882,7 +2338,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                 Rekapitulasi Leger Nilai Matriks (Tampilan Lebar)
               </h2>
               <p className="text-xs text-slate-500">
-                Tampilan memanjang ke samping dengan perhitungan otomatis: <b>Sumatif Materi (50%)</b> + <b>UTS (35%)</b> + <b>UAS (15%)</b> = <b>Nilai Akhir (100%)</b>.
+                Tampilan memanjang ke samping dengan perhitungan otomatis: <b>Sumatif Materi (50%)</b> + <b>UTS (35%)</b> + <b>UAS (15%)</b> + <b>Nilai Tambah (+)</b> = <b>Nilai Akhir (Maks 100)</b>.
               </p>
             </div>
 
@@ -1956,8 +2412,8 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               >
                 <option value="">-- Semua Mapel --</option>
                 {mapelList.map((m) => (
-                  <option key={m.id} value={m.namaMapel}>
-                    {m.namaMapel}
+                  <option key={m.id} value={m.namaMapel || m.nama}>
+                    {m.namaMapel || m.nama}
                   </option>
                 ))}
               </select>
@@ -1980,7 +2436,7 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
 
           {/* TABLE MEMANJANG KE SAMPING (LEGER MATRIKS HORIZONTAL) */}
           <div className="overflow-x-auto rounded-2xl border border-slate-300 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900 custom-scrollbar">
-            <table className="w-full text-left text-xs border-collapse min-w-[1150px]">
+            <table className="w-full text-left text-xs border-collapse min-w-[1220px]">
               <thead>
                 <tr className="bg-slate-800 text-white uppercase text-[11px] tracking-wider">
                   <th rowSpan={2} className="p-3 text-center w-12 border-r border-slate-700">No</th>
@@ -2007,6 +2463,13 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                     className="p-2.5 text-center bg-purple-800 border-r border-purple-700 text-white font-black"
                   >
                     🎓 UAS (15%)
+                  </th>
+
+                  <th 
+                    colSpan={1} 
+                    className="p-2.5 text-center bg-teal-700 border-r border-teal-600 text-white font-black"
+                  >
+                    🌟 NILAI TAMBAH (+)
                   </th>
 
                   <th 
@@ -2066,6 +2529,10 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
                     </div>
                   </th>
 
+                  <th className="p-2.5 text-center min-w-[100px] border-r border-slate-300 dark:border-slate-700 bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200">
+                    Poin Bonus (+)
+                  </th>
+
                   <th className="p-2.5 text-center min-w-[110px] border-r border-slate-200 dark:border-slate-700 bg-emerald-100 dark:bg-emerald-950 text-emerald-950 dark:text-emerald-200 font-black">
                     Nilai Akhir (NA)
                   </th>
@@ -2083,14 +2550,14 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {rekapStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={displaySumatifCols.length + 8} className="p-12 text-center text-slate-400">
+                    <td colSpan={displaySumatifCols.length + 9} className="p-12 text-center text-slate-400">
                       Tidak ada data siswa ditemukan untuk kriteria filter saat ini.
                     </td>
                   </tr>
                 ) : (
                   rekapStudents.map((s, idx) => {
                     const studentGrades = relevantGradesForRekap.filter((g) => g.idSiswa === s.id || g.idSiswa === s.nisn);
-                    const { avgSumatif, valUts, valUas, nilaiAkhir, predikat, keterangan } = hitungNilaiAkhirSiswa(studentGrades);
+                    const { avgSumatif, valUts, valUas, nilaiTambah, nilaiAkhir, predikat, keterangan } = hitungNilaiAkhirSiswa(studentGrades);
 
                     return (
                       <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
@@ -2119,6 +2586,10 @@ export const InputPenilaianView: React.FC<InputPenilaianViewProps> = ({
 
                         <td className="p-2.5 text-center font-bold text-purple-700 dark:text-purple-300 border-r border-slate-300 dark:border-slate-700 bg-purple-50/30">
                           {valUas !== null ? valUas : "-"}
+                        </td>
+
+                        <td className="p-2.5 text-center font-black text-teal-700 dark:text-teal-300 border-r border-slate-300 dark:border-slate-700 bg-teal-50/30">
+                          {nilaiTambah > 0 ? `+${nilaiTambah}` : "-"}
                         </td>
 
                         <td className="p-2.5 text-center font-black text-sm text-emerald-700 dark:text-emerald-300 border-r border-slate-200 dark:border-slate-800 bg-emerald-100/60 dark:bg-emerald-950/50">

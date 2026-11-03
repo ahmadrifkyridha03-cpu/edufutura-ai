@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Siswa, Mapel, LogAbsensi, DataNilai, JurnalAgenda, BimbinganWali, Pengaturan } from "../types";
 import { notifyCetakSuccess, notifyCetakError } from "../lib/swal";
+import { categorizeJenisPenilaian, hitungNilaiAkhirSiswa } from "./InputPenilaianView";
 
 interface PusatLaporanViewProps {
   siswaList: Siswa[];
@@ -256,11 +257,7 @@ export const PusatLaporanView: React.FC<PusatLaporanViewProps> = ({
 
       const testTypes: string[] = Array.from(new Set(rawGrades.map((g) => g.jenis).filter(Boolean) as string[])).sort((a: string, b: string) => a.localeCompare(b, undefined, { numeric: true }));
 
-      const isSumatif = (j: string) => {
-        const l = j.toLowerCase();
-        return !l.includes("uts") && !l.includes("uas") && !l.includes("sts") && !l.includes("sas");
-      };
-      const sumatifTypes = testTypes.filter(isSumatif);
+      const sumatifTypes = testTypes.filter((j) => categorizeJenisPenilaian(j) === "sumatif");
       const displaySumatif = sumatifTypes.length > 0 ? sumatifTypes : ["Sumatif 1"];
 
       // Multi-Level Colored Headers persis seperti preview website
@@ -272,6 +269,7 @@ export const PusatLaporanView: React.FC<PusatLaporanViewProps> = ({
           { content: "SUMATIF MATERI (BOBOT 50%)", colSpan: displaySumatif.length + 1, styles: { halign: "center", fillColor: [30, 58, 138], textColor: 255, fontStyle: "bold" } },
           { content: "UTS (35%)", colSpan: 1, styles: { halign: "center", fillColor: [180, 83, 9], textColor: 255, fontStyle: "bold" } },
           { content: "UAS (15%)", colSpan: 1, styles: { halign: "center", fillColor: [107, 33, 168], textColor: 255, fontStyle: "bold" } },
+          { content: "TAMBAH (+)", colSpan: 1, styles: { halign: "center", fillColor: [15, 118, 110], textColor: 255, fontStyle: "bold" } },
           { content: "HASIL AKHIR & CAPAIAN", colSpan: 3, styles: { halign: "center", fillColor: [6, 95, 70], textColor: 255, fontStyle: "bold" } }
         ],
         [
@@ -279,6 +277,7 @@ export const PusatLaporanView: React.FC<PusatLaporanViewProps> = ({
           { content: "Rata (50%)", styles: { halign: "center", fillColor: [219, 234, 254], textColor: [23, 37, 84], fontStyle: "bold" } },
           { content: "Nilai UTS", styles: { halign: "center", fillColor: [254, 243, 199], textColor: [120, 53, 15], fontStyle: "bold" } },
           { content: "Nilai UAS", styles: { halign: "center", fillColor: [243, 232, 255], textColor: [88, 28, 135], fontStyle: "bold" } },
+          { content: "Poin (+)", styles: { halign: "center", fillColor: [204, 251, 241], textColor: [19, 78, 74], fontStyle: "bold" } },
           { content: "Nilai Akhir", styles: { halign: "center", fillColor: [209, 250, 229], textColor: [6, 78, 59], fontStyle: "bold" } },
           { content: "Predikat", styles: { halign: "center", fillColor: [209, 250, 229], textColor: [6, 78, 59], fontStyle: "bold" } },
           { content: "Keterangan", styles: { halign: "center", fillColor: [209, 250, 229], textColor: [6, 78, 59], fontStyle: "bold" } }
@@ -290,34 +289,14 @@ export const PusatLaporanView: React.FC<PusatLaporanViewProps> = ({
 
         const sumatifVals = displaySumatif.map((t) => {
           const found = studentGrades.find((g) => g.jenis === t);
-          if (found && typeof found.nilai === "number") {
-            return found.nilai;
+          if (found && found.nilai !== "" && found.nilai !== undefined && !isNaN(Number(found.nilai))) {
+            return Number(found.nilai);
           }
           return "-";
         });
 
-        // Hitung bobot 50% Sumatif, 35% UTS, 15% UAS
-        const sumatifItems = studentGrades.filter((g) => isSumatif(g.jenis) && typeof g.nilai === "number");
-        const avgSumatif = sumatifItems.length > 0
-          ? Number((sumatifItems.reduce((a, b) => a + Number(b.nilai), 0) / sumatifItems.length).toFixed(1))
-          : null;
-
-        const utsItem = studentGrades.find((g) => g.jenis.toLowerCase().includes("uts") && typeof g.nilai === "number");
-        const valUts = utsItem ? Number(utsItem.nilai) : null;
-
-        const uasItem = studentGrades.find((g) => g.jenis.toLowerCase().includes("uas") && typeof g.nilai === "number");
-        const valUas = uasItem ? Number(uasItem.nilai) : null;
-
-        let na: number | null = null;
-        if (avgSumatif !== null || valUts !== null || valUas !== null) {
-          const sPart = (avgSumatif || 0) * 0.50;
-          const uPart = (valUts || 0) * 0.35;
-          const asPart = (valUas || 0) * 0.15;
-          na = Number((sPart + uPart + asPart).toFixed(1));
-        }
-
-        const predikat = na === null ? "-" : na >= 88 ? "A" : na >= 78 ? "B" : na >= 70 ? "C" : "D";
-        const keterangan = na === null ? "-" : na >= 88 ? "Sangat Baik" : na >= 78 ? "Baik" : na >= 70 ? "Cukup" : "Perlu Bimbingan";
+        const { avgSumatif, valUts, valUas, nilaiTambah, nilaiAkhir: na, predikat, keterangan } =
+          hitungNilaiAkhirSiswa(studentGrades);
 
         return [
           idx + 1, 
@@ -326,7 +305,8 @@ export const PusatLaporanView: React.FC<PusatLaporanViewProps> = ({
           ...sumatifVals, 
           avgSumatif !== null ? avgSumatif : "-", 
           valUts !== null ? valUts : "-", 
-          valUas !== null ? valUas : "-", 
+          valUas !== null ? valUas : "-",
+          nilaiTambah > 0 ? `+${nilaiTambah}` : 0,
           na !== null ? na : "-", 
           predikat,
           keterangan
@@ -341,7 +321,7 @@ export const PusatLaporanView: React.FC<PusatLaporanViewProps> = ({
         styles: { fontSize: 7.5, cellPadding: 2, lineColor: [203, 213, 225], lineWidth: 0.2 },
         didParseCell: (data) => {
           if (data.section === "body") {
-            const naColIndex = 3 + displaySumatif.length + 3; // NA index
+            const naColIndex = 3 + displaySumatif.length + 4; // NA index (after Rata, UTS, UAS, Tambah)
             const predikatColIndex = naColIndex + 1;
             if (data.column.index === naColIndex) {
               data.cell.styles.fillColor = [220, 252, 231];

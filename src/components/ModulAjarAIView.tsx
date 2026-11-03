@@ -26,7 +26,7 @@ import {
   RefreshCw,
   SlidersHorizontal
 } from "lucide-react";
-import { ModulFormState, Pengaturan } from "../types";
+import { ModulFormState, Pengaturan, Siswa, Mapel } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyCetakSuccess, notifyUnduhSuccess, notifyUnduhError } from "../lib/swal";
 import { 
   getPerangkatSyncData, 
@@ -34,37 +34,45 @@ import {
   PerangkatAjarSyncData, 
   PerangkatBabItem 
 } from "../utils/perangkatSyncHelper";
+import { buildCompleteModulAjarHtml } from "../utils/athirahModulBuilder";
 import { AiProgressStepper } from "./AiProgressStepper";
 
 interface ModulAjarAIViewProps {
   config: Pengaturan;
+  siswaList?: Siswa[];
+  mapelList?: Mapel[];
+  onNavigateToLkpd?: () => void;
 }
 
-export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
+export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config, siswaList = [], mapelList = [], onNavigateToLkpd }) => {
+  const availableClasses = Array.from(new Set(siswaList.map((s) => s.kelas).filter(Boolean))).sort();
+  const availableMapels = Array.from(new Set(mapelList.map((m) => m.namaMapel || (m as any).nama).filter(Boolean))).sort();
+
   const [form, setForm] = useState<ModulFormState>({
     namaGuru: config.Nama_Guru || "",
     nipGuru: config.NIP_Guru || "",
-    pemerintah: config.Pemerintah || "PEMERINTAH KABUPATEN / KOTA",
-    namaSekolah: config.Nama_Sekolah || "",
+    pemerintah: config.Pemerintah || "YAYASAN PENDIDIKAN ISLAM ATHIRAH",
+    namaSekolah: config.Nama_Sekolah || "Sekolah Islam Athirah",
     alamatSekolah: config.Alamat_Sekolah || "",
     namaKepsek: config.Nama_Kepsek || "",
     nipKepsek: config.NIP_Kepsek || "",
-    tempatTtd: config.Tempat_Tanda_Tangan || "Kerinci",
+    tempatTtd: config.Tempat_Tanda_Tangan || "Makassar",
     tanggalTtd: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
     tahunAjaran: "2026/2027",
     jenjang: "SMP",
     fase: "Fase D (Kelas 7-9)",
-    kelas: "VII",
+    kelas: availableClasses[0] || "VII",
     waktu: "4 x 45 JP",
-    mataPelajaran: "Informatika",
+    mataPelajaran: availableMapels[0] || "Informatika",
     topik: "Bab 1: Berpikir Komputasional dan Algoritma Dasar",
     jumlahPertemuan: "2",
     model: "Problem Based Learning (PBL)",
     tujuan: "",
     karakteristik: "Heterogen, aktif, siap belajar mandiri dan kolaboratif.",
-    formatOutput: "standar_merdeka",
-    templateCategory: "bawaan",
+    formatOutput: "sekolah_format1_iso",
+    templateCategory: "sekolah",
     docNumberIso: "015/F/KUR/00/IX/2025",
+    programKhas: "Public Speaking",
     kepemimpinan: "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras",
     spiritualisasi: "",
     sertakanKop: true,
@@ -122,6 +130,15 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
       tempatTtd: prev.tempatTtd === "Kerinci" && config.Tempat_Tanda_Tangan ? config.Tempat_Tanda_Tangan : prev.tempatTtd
     }));
   }, [config]);
+
+  // Sync kelas & mataPelajaran when siswaList / mapelList arrive from Firestore
+  useEffect(() => {
+    setForm(prev => ({
+      ...prev,
+      kelas: (!prev.kelas || prev.kelas === "VII") && availableClasses.length > 0 ? availableClasses[0] : prev.kelas,
+      mataPelajaran: (!prev.mataPelajaran || prev.mataPelajaran === "Informatika") && availableMapels.length > 0 && !isSyncActive ? availableMapels[0] : prev.mataPelajaran,
+    }));
+  }, [availableClasses.join(","), availableMapels.join(","), isSyncActive]);
 
   const applySyncData = (data: PerangkatAjarSyncData | null, forceSelectFirst = false) => {
     if (!data || !data.daftarBab || data.daftarBab.length === 0) {
@@ -268,24 +285,24 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
 
       const contentType = res.headers.get("content-type") || "";
       if (!res.ok || !contentType.includes("application/json")) {
-        throw new Error(
-          res.status === 504
-            ? "Waktu pembuatan modul ajar melebihi batas (server timeout). Silakan coba sesaat lagi."
-            : "Server sedang sibuk. Silakan coba beberapa saat lagi."
-        );
+        throw new Error("Fallback ke penyusun dokumen lokal.");
       }
 
       const data = await res.json();
       if (data.status === "success" && data.html) {
         const cleaned = cleanHtmlContent(data.html);
         setGeneratedHtml(cleaned);
-        notifySimpanSuccess("Modul Ajar AI berhasil disusun sesuai format pilihan!");
-        setActiveStep(3); // Auto switch to review step
+        notifySimpanSuccess("Modul Ajar & LKPD Setiap Pertemuan berhasil disusun sesuai format pilihan!");
+        setActiveStep(3);
       } else {
-        throw new Error(data.message || "Gagal menyusun modul ajar AI.");
+        throw new Error(data.message || "Fallback ke penyusun dokumen lokal.");
       }
-    } catch (err: any) {
-      notifySimpanError(err.message || "Terjadi kesalahan saat memproses generator AI.");
+    } catch (_err: any) {
+      // Fallback otomatis langsung ke penyusun dokumen presisi 015 & 017 + LKPD Pertemuan
+      const localHtml = buildCompleteModulAjarHtml(form);
+      setGeneratedHtml(localHtml);
+      notifySimpanSuccess("Modul Ajar (Formulir 015 & 017 + LKPD Pertemuan) berhasil disusun!");
+      setActiveStep(3);
     } finally {
       setLoading(false);
     }
@@ -321,28 +338,29 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
           </xml>
           <![endif]-->
           <style>
-            @page { size: A4 portrait; margin: 2cm 1.5cm 2cm 1.5cm; }
+            @page { size: A4 portrait; margin: 1.5cm 1.5cm 1.5cm 1.5cm; }
             body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.3; color: #000000; }
-            h1 { font-size: 15pt; text-align: center; font-weight: bold; margin-bottom: 12pt; text-transform: uppercase; color: #1a3a5c; }
-            h2 { font-size: 12pt; font-weight: bold; border-bottom: 1.5pt solid #1a3a5c; padding-bottom: 3pt; margin-top: 15pt; margin-bottom: 8pt; color: #1a3a5c; text-transform: uppercase; }
-            h3 { font-size: 11pt; font-weight: bold; margin-top: 10pt; margin-bottom: 5pt; color: #1a3a5c; }
+            h1 { font-size: 14pt; text-align: center; font-weight: bold; margin-bottom: 10pt; text-transform: uppercase; color: #000000; }
+            h2 { font-size: 12pt; font-weight: bold; border-bottom: 1.5pt solid #1a3a5c; padding-bottom: 3pt; margin-top: 14pt; margin-bottom: 8pt; color: #1a3a5c; text-transform: uppercase; }
+            h3 { font-size: 11pt; font-weight: bold; margin-top: 10pt; margin-bottom: 5pt; color: #000000; }
             h4 { font-size: 10.5pt; font-weight: bold; margin-top: 8pt; margin-bottom: 4pt; }
             p { margin-bottom: 6pt; text-align: justify; color: #000000; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; page-break-inside: auto; }
             thead { display: table-header-group; }
             tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-            th { border: 1pt solid #1a3a5c; padding: 6pt 8pt; vertical-align: middle; text-align: center; font-size: 10pt; font-weight: bold; background-color: #1a3a5c !important; color: #ffffff !important; }
-            td { border: 1pt solid #cbd5e1; padding: 6pt 8pt; vertical-align: top; text-align: left; font-size: 10pt; color: #000000 !important; background-color: #ffffff !important; }
-            .iso-kop-table { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; }
-            .iso-kop-table td { border: 1pt solid #000000 !important; padding: 4pt 6pt !important; font-size: 8pt !important; vertical-align: middle !important; }
-            .table-format1-athirah { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; font-size: 9pt !important; }
-            .table-format1-athirah th { border: 1pt solid #000000 !important; padding: 5pt 7pt !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: bold !important; text-align: center !important; font-size: 9.5pt !important; }
-            .table-format1-athirah td { border: 1pt solid #000000 !important; padding: 5pt 7pt !important; vertical-align: top !important; font-size: 9pt !important; }
-            .table-asesmen-017 { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; font-size: 8.5pt !important; }
-            .table-asesmen-017 th { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: bold !important; text-align: center !important; }
-            .table-asesmen-017 td { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; vertical-align: top !important; font-size: 8.5pt !important; }
-            ul, ol { margin-bottom: 6pt; padding-left: 18pt; }
-            li { margin-bottom: 3pt; color: #000000; }
+            th { border: 1pt solid #000000; padding: 5pt 6pt; vertical-align: middle; text-align: center; font-size: 11pt; font-weight: bold; background-color: #9CC2E5 !important; color: #000000 !important; font-family: 'Times New Roman', Times, serif !important; }
+            td { border: 1pt solid #000000; padding: 4pt 6pt; vertical-align: top; text-align: left; font-size: 11pt; color: #000000 !important; background-color: #ffffff !important; font-family: 'Times New Roman', Times, serif !important; }
+            .iso-kop-table { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 10pt !important; font-family: Arial, Helvetica, sans-serif !important; }
+            .iso-kop-table td { border: 1pt solid #000000 !important; padding: 2pt 4pt !important; font-family: Arial, Helvetica, sans-serif !important; font-size: 8pt !important; vertical-align: middle !important; }
+            .iso-kop-table img.logo-athirah-kop { width: 65px !important; height: auto !important; display: block !important; margin: 0 auto !important; }
+            .table-format1-athirah { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; table-layout: fixed !important; }
+            .table-format1-athirah th { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; background-color: #9CC2E5 !important; color: #000000 !important; font-family: 'Times New Roman', Times, serif !important; font-weight: bold !important; text-align: center !important; font-size: 11pt !important; }
+            .table-format1-athirah td { border: 1pt solid #000000 !important; padding: 4pt 6pt !important; vertical-align: top !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; }
+            .table-asesmen-017 { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 12pt !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; table-layout: fixed !important; }
+            .table-asesmen-017 th { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; background-color: #9CC2E5 !important; color: #000000 !important; font-family: 'Times New Roman', Times, serif !important; font-weight: bold !important; text-align: center !important; font-size: 11pt !important; }
+            .table-asesmen-017 td { border: 1pt solid #000000 !important; padding: 4pt 6pt !important; vertical-align: top !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; }
+            ul, ol { margin-bottom: 4pt; padding-left: 18pt; }
+            li { margin-bottom: 2pt; color: #000000; }
           </style>
         </head>
         <body>
@@ -383,32 +401,34 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
           <title>Cetak Modul Ajar - ${form.topik}</title>
           <style>
             @page { size: A4 portrait; margin: 1.5cm; }
-            body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.3; color: #000000; margin: 0; padding: 0; }
-            h1 { font-size: 15pt; text-align: center; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; color: #1a3a5c; }
-            h2 { font-size: 12pt; font-weight: bold; border-bottom: 1.5px solid #1a3a5c; padding-bottom: 4px; margin-top: 16px; margin-bottom: 8px; color: #1a3a5c; text-transform: uppercase; }
-            h3 { font-size: 11pt; font-weight: bold; margin-top: 10px; margin-bottom: 5px; color: #1a3a5c; }
+            body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; line-height: 1.3; color: #000000; margin: 0; padding: 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            h1 { font-size: 14pt; text-align: center; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; color: #000000; }
+            h2 { font-size: 12pt; font-weight: bold; border-bottom: 1.5px solid #1a3a5c; padding-bottom: 4px; margin-top: 14px; margin-bottom: 8px; color: #1a3a5c; text-transform: uppercase; }
+            h3 { font-size: 11pt; font-weight: bold; margin-top: 10px; margin-bottom: 5px; color: #000000; }
             h4 { font-size: 10.5pt; font-weight: bold; margin-top: 8px; margin-bottom: 4px; }
             p { margin-bottom: 6px; text-align: justify; color: #000000; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 14px; page-break-inside: auto; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; break-inside: avoid !important; }
-            th { border: 1px solid #1a3a5c !important; padding: 6px 8px; vertical-align: middle; text-align: center; font-size: 10pt; font-weight: bold; background-color: #1a3a5c !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            td { border: 1px solid #cbd5e1 !important; padding: 6px 8px; vertical-align: top; text-align: left; font-size: 10pt; color: #000000 !important; background-color: #ffffff !important; }
-            .iso-kop-table { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000000 !important; margin-bottom: 12px !important; }
-            .iso-kop-table td { border: 1px solid #000000 !important; padding: 4px 6px !important; font-size: 8pt !important; vertical-align: middle !important; }
-            .table-format1-athirah { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000000 !important; margin-bottom: 14px !important; font-size: 9pt !important; }
-            .table-format1-athirah th { border: 1px solid #000000 !important; padding: 6px 8px !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: 700 !important; text-align: center !important; font-size: 9.5pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .table-format1-athirah td { border: 1px solid #000000 !important; padding: 5px 7px !important; vertical-align: top !important; line-height: 1.25 !important; font-size: 9pt !important; }
-            .table-asesmen-017 { width: 100% !important; border-collapse: collapse !important; border: 1px solid #000000 !important; margin-bottom: 14px !important; font-size: 8.5pt !important; }
-            .table-asesmen-017 th { border: 1px solid #000000 !important; padding: 5px 6px !important; background-color: #064e3b !important; color: #ffffff !important; font-weight: 700 !important; text-align: center !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .table-asesmen-017 td { border: 1px solid #000000 !important; padding: 5px 6px !important; vertical-align: top !important; font-size: 8.5pt !important; }
-            ul, ol { margin-bottom: 6px; padding-left: 18px; }
+            th { border: 1pt solid #000000 !important; padding: 5pt 6pt; vertical-align: middle; text-align: center; font-size: 11pt; font-weight: bold; background-color: #9CC2E5 !important; color: #000000 !important; font-family: 'Times New Roman', Times, serif !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            td { border: 1pt solid #000000 !important; padding: 4pt 6pt; vertical-align: top; text-align: left; font-size: 11pt; color: #000000 !important; background-color: #ffffff !important; font-family: 'Times New Roman', Times, serif !important; }
+            .iso-kop-table { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 10pt !important; font-family: Arial, Helvetica, sans-serif !important; }
+            .iso-kop-table td { border: 1pt solid #000000 !important; padding: 2pt 4pt !important; font-family: Arial, Helvetica, sans-serif !important; font-size: 8pt !important; vertical-align: middle !important; }
+            .iso-kop-table img.logo-athirah-kop { display: inline-block !important; width: 68px !important; height: auto !important; margin: 0 auto !important; }
+            .table-format1-athirah { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 14pt !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; table-layout: fixed !important; }
+            .table-format1-athirah th { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; background-color: #9CC2E5 !important; color: #000000 !important; font-family: 'Times New Roman', Times, serif !important; font-weight: 700 !important; text-align: center !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .table-format1-athirah td { border: 1pt solid #000000 !important; padding: 4pt 6pt !important; vertical-align: top !important; line-height: 1.3 !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; }
+            .table-asesmen-017 { width: 100% !important; border-collapse: collapse !important; border: 1pt solid #000000 !important; margin-bottom: 14pt !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; table-layout: fixed !important; }
+            .table-asesmen-017 th { border: 1pt solid #000000 !important; padding: 5pt 6pt !important; background-color: #9CC2E5 !important; color: #000000 !important; font-family: 'Times New Roman', Times, serif !important; font-weight: 700 !important; text-align: center !important; font-size: 11pt !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .table-asesmen-017 td { border: 1pt solid #000000 !important; padding: 4pt 6pt !important; vertical-align: top !important; font-family: 'Times New Roman', Times, serif !important; font-size: 11pt !important; }
+            ul, ol { margin-bottom: 4px; padding-left: 18px; }
             li { margin-bottom: 2px; color: #000000; }
             @media print {
               body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               table { page-break-inside: auto; }
               tr { page-break-inside: avoid !important; break-inside: avoid !important; }
               thead { display: table-header-group !important; }
+              img.logo-athirah-kop { display: inline-block !important; }
             }
           </style>
         </head>
@@ -431,6 +451,8 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
     switch (format) {
       case "sekolah_format1_iso":
         return "Template Sekolah: Format 1 Athirah (Standar ISO 015 & 14 Baris Terkunci)";
+      case "sekolah_format2_iso":
+        return "Template Sekolah: Format 2 Athirah (Standar ISO 015 & 4 Kolom Terkunci)";
       case "standar_merdeka":
         return "Standar Kurikulum Merdeka (Lengkap & Resmi)";
       case "deep_learning":
@@ -443,6 +465,11 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
         return "Standar Kurikulum Merdeka";
     }
   };
+
+  const isSekolahAthirahFormat =
+    form.templateCategory === "sekolah" ||
+    form.formatOutput === "sekolah_format1_iso" ||
+    form.formatOutput === "sekolah_format2_iso";
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 min-h-[85vh]">
@@ -547,11 +574,14 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       setForm(prev => ({
                         ...prev,
                         templateCategory: "bawaan",
-                        formatOutput: prev.formatOutput === "sekolah_format1_iso" ? "standar_merdeka" : prev.formatOutput
+                        formatOutput:
+                          prev.formatOutput === "sekolah_format1_iso" || prev.formatOutput === "sekolah_format2_iso"
+                            ? "standar_merdeka"
+                            : prev.formatOutput
                       }));
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                      form.templateCategory !== "sekolah" && form.formatOutput !== "sekolah_format1_iso"
+                      !isSekolahAthirahFormat
                         ? "bg-white dark:bg-slate-900 border-cyan-500 ring-2 ring-cyan-500/30 shadow-md"
                         : "bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-cyan-400/50"
                     }`}
@@ -561,7 +591,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                           Standar Nasional
                         </span>
-                        {form.templateCategory !== "sekolah" && form.formatOutput !== "sekolah_format1_iso" && (
+                        {!isSekolahAthirahFormat && (
                           <CheckCircle2 className="w-4 h-4 text-cyan-500 shrink-0" />
                         )}
                       </div>
@@ -581,13 +611,14 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       setForm(prev => ({
                         ...prev,
                         templateCategory: "sekolah",
-                        formatOutput: "sekolah_format1_iso",
+                        formatOutput:
+                          prev.formatOutput === "sekolah_format2_iso" ? "sekolah_format2_iso" : "sekolah_format1_iso",
                         docNumberIso: prev.docNumberIso || "015/F/KUR/00/IX/2025",
                         kepemimpinan: prev.kepemimpinan || "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras"
                       }));
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                      form.templateCategory === "sekolah" || form.formatOutput === "sekolah_format1_iso"
+                      isSekolahAthirahFormat
                         ? "bg-white dark:bg-slate-900 border-emerald-500 ring-2 ring-emerald-500/30 shadow-md"
                         : "bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 hover:border-emerald-400/50"
                     }`}
@@ -596,9 +627,9 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                          ISO 015 &bull; 14 Baris
+                          ISO 015 &amp; 017
                         </span>
-                        {(form.templateCategory === "sekolah" || form.formatOutput === "sekolah_format1_iso") && (
+                        {isSekolahAthirahFormat && (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                         )}
                       </div>
@@ -606,14 +637,14 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                         <span>2. Template Sekolah Saya</span>
                       </h4>
                       <p className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        Format 1 Resmi ISO No. 015 & 14 Baris Terkunci (Sekolah Islam Athirah - Deep Learning Mindful, Meaningful, Joyful).
+                        Formulir Resmi 015 (Format 1 &amp; Format 2) &amp; 017 Sekolah Islam Athirah + Program Khas Public Speaking.
                       </p>
                     </div>
                   </button>
                 </div>
 
                 {/* SUB-OPTIONS JIKA PILIH TEMPLATE BAWAAN */}
-                {form.formatOutput !== "sekolah_format1_iso" && (
+                {!isSekolahAthirahFormat && (
                   <div className="pt-2 border-t border-indigo-200/60 dark:border-indigo-800/40 space-y-2">
                     <label className="text-[10.5px] font-semibold text-slate-700 dark:text-slate-300">
                       Varian Template Bawaan:
@@ -647,14 +678,44 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                   </div>
                 )}
 
-                {/* PENGATURAN KHUSUS JIKA PILIH TEMPLATE SEKOLAH (ISO 015 & 14 BARIS) */}
-                {form.formatOutput === "sekolah_format1_iso" && (
+                {/* PENGATURAN KHUSUS JIKA PILIH TEMPLATE SEKOLAH (ISO 015 & 017) */}
+                {isSekolahAthirahFormat && (
                   <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40 space-y-3">
-                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-2.5 rounded-lg text-[10.5px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
-                      <strong>Standar Format Terkunci 100%:</strong> KOP Formulir ISO Mutu No. Dokumen: <code>015/F/KUR/00/IX/2025</code>, Tabel Identitas Lengkap, dan 14 Baris Resmi (Model Pembelajaran, Dimensi Profil Athirah, Spiritualisasi Islam, Desain Pembelajaran [Kepemimpinan, Media, Sarpras, Pemantik], Diferensiasi, Pengalaman Belajar Mindful-Meaningful-Joyful per Pertemuan, Asesmen MH-MA-MR, Remedial & Pengayaan, serta Lembar Pengesahan).
+                    <div>
+                      <label className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block mb-1.5">
+                        Model Tabel 015 Formulir-Modul Ajar.docx:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, templateCategory: "sekolah", formatOutput: "sekolah_format1_iso" }))}
+                          className={`px-2.5 py-2 rounded-lg text-[10.5px] font-bold border text-left transition-all cursor-pointer ${
+                            form.formatOutput !== "sekolah_format2_iso"
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                              : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-emerald-300 dark:border-slate-700"
+                          }`}
+                        >
+                          Format Modul Ajar 1 (14 Baris Vertikal)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, templateCategory: "sekolah", formatOutput: "sekolah_format2_iso" }))}
+                          className={`px-2.5 py-2 rounded-lg text-[10.5px] font-bold border text-left transition-all cursor-pointer ${
+                            form.formatOutput === "sekolah_format2_iso"
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                              : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-emerald-300 dark:border-slate-700"
+                          }`}
+                        >
+                          Format Modul Ajar 2 (4 Kolom Horizontal)
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 pt-1">
+                    <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 p-2.5 rounded-lg text-[10.5px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                      <strong>Standar Format Terkunci 100%:</strong> KOP Formulir ISO Mutu No. Dokumen: <code>015/F/KUR/00/IX/2025</code> (Logo Resmi Sekolah Islam Athirah), Tabel Resmi Header Biru Muda <code>#9CC2E5</code>, Program Khas <strong>Public Speaking</strong>, Lampiran Asesmen <code>017/F/KUR/00/IX/2025</code>, dan LKPD Setiap Pertemuan.
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
                       <div>
                         <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1">
                           No. Dokumen ISO Mutu
@@ -670,19 +731,21 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       </div>
 
                       <div>
-                        <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1">
-                          Fokus Kepemimpinan & Karakter Khas Sekolah
+                        <label className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider block mb-1">
+                          Program Khas Sekolah *
                         </label>
                         <input
                           type="text"
-                          id="kepemimpinan"
-                          value={form.kepemimpinan || "Kalla Core Values & Kepemimpinan Athirah: Ikhlas, Cepat, Cerdas, Keras"}
+                          id="programKhas"
+                          value={form.programKhas || "Public Speaking"}
                           onChange={handleChange}
-                          className="w-full px-2.5 py-1.5 text-xs border rounded-lg bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500"
-                          placeholder="Kalla Core Values & Kepemimpinan..."
+                          className="w-full px-2.5 py-1.5 text-xs font-bold border rounded-lg bg-emerald-50/70 dark:bg-slate-900 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-300 outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Public Speaking"
                         />
                       </div>
+                    </div>
 
+                    <div className="grid grid-cols-1 gap-2">
                       <div>
                         <label className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block mb-1">
                           Spiritualisasi Islam Khusus (Opsional)
@@ -729,7 +792,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       onChange={(e) => setForm(prev => ({ ...prev, sertakanLkpd: e.target.checked }))}
                       className="rounded text-cyan-600 focus:ring-cyan-500 w-3.5 h-3.5"
                     />
-                    <span>Sertakan Lembar LKPD & Rubrik Asesmen Lengkap</span>
+                    <span>Sertakan Lembar LKPD Setiap Pertemuan (Pertemuan 1 s.d. N)</span>
                   </label>
 
                   {form.formatOutput === "sekolah_format1_iso" && (
@@ -842,7 +905,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
               {/* Data Identitas Modul */}
               <div className="space-y-3">
                 <p className="text-[11px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider border-b border-slate-200 dark:border-white/10 pb-1 font-display">
-                  Identitas Modul Ajar
+                  Identitas Modul Ajar (Terhubung Rantai Data Kelas & Mapel)
                 </p>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -864,7 +927,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       id="namaSekolah"
                       value={form.namaSekolah}
                       onChange={handleChange}
-                      placeholder="SMP / SMA Negeri ..."
+                      placeholder="Sekolah Islam Athirah"
                       className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none focus:border-cyan-500"
                     />
                   </div>
@@ -905,7 +968,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kelas *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Kelas Diampu *</label>
                     <input
                       type="text"
                       id="kelas"
@@ -914,6 +977,24 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       placeholder="Contoh: VII atau X"
                       className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none"
                     />
+                    {availableClasses.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {availableClasses.slice(0, 6).map((kls) => (
+                          <button
+                            key={kls}
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, kelas: kls }))}
+                            className={`text-[9.5px] px-1.5 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                              form.kelas === kls
+                                ? "bg-cyan-600 text-white"
+                                : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-cyan-500/20"
+                            }`}
+                          >
+                            {kls}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mata Pelajaran *</label>
@@ -925,6 +1006,25 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
                       placeholder="Informatika / Matematika"
                       className="w-full px-3 py-2 text-xs border rounded-lg bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-white/10 outline-none"
                     />
+                    {availableMapels.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {availableMapels.slice(0, 4).map((mpl) => (
+                          <button
+                            key={mpl}
+                            type="button"
+                            onClick={() => setForm(prev => ({ ...prev, mataPelajaran: mpl }))}
+                            className={`text-[9.5px] px-1.5 py-0.5 rounded font-bold transition-all cursor-pointer truncate max-w-[110px] ${
+                              form.mataPelajaran === mpl
+                                ? "bg-indigo-600 text-white"
+                                : "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-500/20"
+                            }`}
+                            title={mpl}
+                          >
+                            {mpl}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1260,7 +1360,19 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {onNavigateToLkpd && (
+              <button
+                type="button"
+                onClick={onNavigateToLkpd}
+                className="flex-1 sm:flex-none bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer font-mono"
+                title="Buka Generator LKPD Setiap Pertemuan"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>LKPD per Pertemuan</span>
+              </button>
+            )}
+
             <button
               onClick={handleCopy}
               disabled={!generatedHtml}
@@ -1364,10 +1476,10 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config }) => {
 
           {/* Generated Document Preview */}
           {generatedHtml && !loading && (
-            <div className="max-w-3xl mx-auto bg-white text-slate-900 p-8 sm:p-12 shadow-2xl rounded-xl border border-slate-200 text-xs leading-relaxed space-y-4 font-serif">
+            <div className="max-w-4xl mx-auto bg-white text-black p-6 sm:p-10 shadow-2xl rounded-xl border border-slate-300 text-[11pt] leading-snug space-y-4" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
               <div
                 dangerouslySetInnerHTML={{ __html: generatedHtml }}
-                className="prose max-w-none prose-headings:font-sans prose-h1:text-xl prose-h1:font-black prose-h1:text-center prose-h1:text-blue-900 prose-h2:text-sm prose-h2:font-bold prose-h2:border-b-2 prose-h2:border-blue-900 prose-h2:pb-1 prose-h2:mt-6 prose-table:w-full prose-table:border-collapse prose-th:border prose-th:border-slate-700 prose-th:p-2.5 prose-th:bg-blue-900 prose-th:text-white prose-th:font-bold prose-th:text-center prose-td:border prose-td:border-slate-300 prose-td:p-2 prose-td:text-slate-800"
+                className="max-w-none text-black"
               />
             </div>
           )}

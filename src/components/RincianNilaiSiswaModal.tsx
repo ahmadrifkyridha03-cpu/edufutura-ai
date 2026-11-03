@@ -172,6 +172,16 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
     );
   }, [currentMapelGrades]);
 
+  const nilaiTambahItems = useMemo(() => {
+    return currentMapelGrades.filter(
+      (g) =>
+        categorizeJenisPenilaian(g.jenis) === "nilai_tambah" &&
+        g.nilai !== "" &&
+        g.nilai !== undefined &&
+        !isNaN(Number(g.nilai))
+    );
+  }, [currentMapelGrades]);
+
   // Calculate scores and contributions
   const calculations = useMemo(() => {
     const sumatifScores = sumatifItems.map((g) => Number(g.nilai));
@@ -182,18 +192,24 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
 
     const valUts = utsItem ? Number(utsItem.nilai) : null;
     const valUas = uasItem ? Number(uasItem.nilai) : null;
+    const nilaiTambah =
+      nilaiTambahItems.length > 0
+        ? Number(nilaiTambahItems.reduce((a, b) => a + Number(b.nilai), 0).toFixed(1))
+        : 0;
 
     // Mathematical contributions based on user rules:
     // Sumatif: 50%
     // UTS: 35%
     // UAS: 15%
+    // + Nilai Tambah (capped at 100)
     const kontribusiSumatif = avgSumatif !== null ? Number((avgSumatif * 0.50).toFixed(2)) : 0;
     const kontribusiUts = valUts !== null ? Number((valUts * 0.35).toFixed(2)) : 0;
     const kontribusiUas = valUas !== null ? Number((valUas * 0.15).toFixed(2)) : 0;
 
     let nilaiAkhir: number | null = null;
-    if (avgSumatif !== null || valUts !== null || valUas !== null) {
-      nilaiAkhir = Number((kontribusiSumatif + kontribusiUts + kontribusiUas).toFixed(1));
+    if (avgSumatif !== null || valUts !== null || valUas !== null || nilaiTambah > 0) {
+      const raw = Number((kontribusiSumatif + kontribusiUts + kontribusiUas + nilaiTambah).toFixed(1));
+      nilaiAkhir = Math.min(100, raw);
     }
 
     // Predikat & Keterangan
@@ -227,6 +243,7 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
       avgSumatif,
       valUts,
       valUas,
+      nilaiTambah,
       kontribusiSumatif,
       kontribusiUts,
       kontribusiUas,
@@ -237,7 +254,7 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
       isLulusKkm,
       sumatifCount: sumatifScores.length
     };
-  }, [sumatifItems, utsItem, uasItem]);
+  }, [sumatifItems, utsItem, uasItem, nilaiTambahItems]);
 
   // Multi-subject overview table for this student
   const multiMapelSummary = useMemo(() => {
@@ -249,6 +266,7 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
         avgSumatif: res.avgSumatif,
         valUts: res.valUts,
         valUas: res.valUas,
+        nilaiTambah: res.nilaiTambah,
         nilaiAkhir: res.nilaiAkhir,
         predikat: res.predikat,
         keterangan: res.keterangan
@@ -278,7 +296,7 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                 Transparansi Pembobotan Nilai
               </span>
               <span className="text-[11px] font-bold text-amber-300">
-                Sumatif 50% • UTS 35% • UAS 15%
+                Sumatif 50% • UTS 35% • UAS 15% + Nilai Tambah
               </span>
             </div>
             <h2 id="rincian-nilai-title" className="text-lg sm:text-xl font-black flex items-center gap-2">
@@ -488,7 +506,7 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                         {currentMapelGrades.length} Kali Diinput
                       </span>
                       <span className="text-[10px] font-semibold text-slate-500 block mt-0.5">
-                        {calculations.sumatifCount} Sumatif • {utsItem ? "1" : "0"} UTS • {uasItem ? "1" : "0"} UAS
+                        {calculations.sumatifCount} Sumatif • {utsItem ? "1" : "0"} UTS • {uasItem ? "1" : "0"} UAS{calculations.nilaiTambah > 0 ? ` • +${calculations.nilaiTambah} Bonus` : ""}
                       </span>
                     </div>
                   </div>
@@ -549,6 +567,22 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                     >
                       <span>UAS: +{calculations.kontribusiUas}</span>
                     </div>
+
+                    {/* Nilai Tambah contribution portion */}
+                    {calculations.nilaiTambah > 0 && (
+                      <div
+                        className="bg-teal-600 hover:bg-teal-500 transition-all rounded-lg flex items-center justify-center text-[10px] font-black text-white px-1 truncate relative group cursor-pointer"
+                        style={{
+                          width: `${Math.max(
+                            (calculations.nilaiTambah / (calculations.nilaiAkhir || 100)) * 100,
+                            12
+                          )}%`
+                        }}
+                        title={`Nilai Tambah (+): +${calculations.nilaiTambah} poin`}
+                      >
+                        <span>Tambah: +{calculations.nilaiTambah}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Legend underneath bar */}
@@ -574,6 +608,13 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                         +{calculations.kontribusiUas} pt
                       </strong>
                     </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-600 inline-block" />
+                      <span>Nilai Tambah (+): </span>
+                      <strong className="text-teal-600 dark:text-teal-400 font-mono">
+                        +{calculations.nilaiTambah} pt
+                      </strong>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -591,15 +632,15 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                     Rumus Resmi:
                   </div>
                   <div className="font-bold text-blue-600 dark:text-blue-400">
-                    Nilai Akhir (NA) = (Rata-rata Sumatif × 50%) + (Nilai UTS × 35%) + (Nilai UAS × 15%)
+                    Nilai Akhir (NA) = (Rata-rata Sumatif × 50%) + (Nilai UTS × 35%) + (Nilai UAS × 15%) + Poin Nilai Tambah (Maks 100)
                   </div>
                   <div className="text-slate-500 dark:text-slate-400 font-sans text-[11px] font-bold pt-1">
                     Substitusi Angka Nilai Siswa:
                   </div>
                   <div className="leading-relaxed">
-                    NA = ({calculations.avgSumatif ?? "0"} × 0.50) + ({calculations.valUts ?? "0"} × 0.35) + ({calculations.valUas ?? "0"} × 0.15)
+                    NA = ({calculations.avgSumatif ?? "0"} × 0.50) + ({calculations.valUts ?? "0"} × 0.35) + ({calculations.valUas ?? "0"} × 0.15) + {calculations.nilaiTambah}
                     <br />
-                    NA = {calculations.kontribusiSumatif} + {calculations.kontribusiUts} + {calculations.kontribusiUas}
+                    NA = {calculations.kontribusiSumatif} + {calculations.kontribusiUts} + {calculations.kontribusiUas} + {calculations.nilaiTambah}
                     <br />
                     <span className="text-emerald-600 dark:text-emerald-400 font-black">
                       NA = {calculations.nilaiAkhir ?? "0"} &rarr; Predikat {calculations.predikat}
@@ -859,6 +900,7 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                       <th className="px-3.5 py-3 text-center">Rata-rata Sumatif (50%)</th>
                       <th className="px-3.5 py-3 text-center">UTS (35%)</th>
                       <th className="px-3.5 py-3 text-center">UAS (15%)</th>
+                      <th className="px-3.5 py-3 text-center text-emerald-700 dark:text-emerald-400">Nilai Tambah (+)</th>
                       <th className="px-3.5 py-3 text-center">Nilai Akhir (100%)</th>
                       <th className="px-3.5 py-3 text-center">Predikat</th>
                       <th className="px-3.5 py-3 text-center">Keterangan</th>
@@ -883,6 +925,9 @@ export const RincianNilaiSiswaModal: React.FC<RincianNilaiSiswaModalProps> = ({
                         </td>
                         <td className="px-3.5 py-2.5 text-center font-mono font-bold text-amber-600 dark:text-amber-400">
                           {item.valUAS ?? item.valUas ?? "-"}
+                        </td>
+                        <td className="px-3.5 py-2.5 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          {(item.nilaiTambah ?? 0) > 0 ? `+${item.nilaiTambah}` : "-"}
                         </td>
                         <td className="px-3.5 py-2.5 text-center font-mono font-black text-slate-900 dark:text-white text-sm">
                           {item.nilaiAkhir ?? "-"}

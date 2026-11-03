@@ -69,6 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: "jadwal", label: "Jadwal Mengajar", icon: Clock },
         { id: "absensi", label: "Input Absensi & QR", icon: ClipboardCheck },
         { id: "penilaian", label: "Input Penilaian", icon: Star },
+        { id: "nilai-tambah", label: "Nilai Tambah & Poin", icon: Zap, highlight: true },
         { id: "raport", label: "Cetak Rapor Siswa", icon: Award, highlight: true },
         { id: "agenda", label: "Agenda Mengajar", icon: Calendar },
         { id: "bimbingan", label: "Bimbingan Guru Wali", icon: HeartHandshake },

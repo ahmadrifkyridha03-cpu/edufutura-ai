@@ -98,6 +98,7 @@ const AKADEMIK_ITEMS = [
   { id: "jadwal", label: "Jadwal Mengajar", icon: Clock, desc: "Kelola & cetak jadwal pelajaran" },
   { id: "absensi", label: "Input Absensi", icon: ClipboardCheck, desc: "Pencatatan kehadiran harian siswa" },
   { id: "penilaian", label: "Input Penilaian", icon: Star, desc: "Rekap & input nilai formatif/sumatif" },
+  { id: "nilai-tambah", label: "Nilai Tambah", icon: Sparkles, desc: "Poin keaktifan, Public Speaking & tugas tambahan" },
   { id: "raport", label: "Cetak Rapor Siswa", icon: Award, desc: "Cetak Rapor Kurikulum Merdeka resmi" },
   { id: "agenda", label: "Agenda Mengajar", icon: Calendar, desc: "Jurnal kegiatan belajar harian guru" },
   { id: "bimbingan", label: "Bimbingan Guru Wali", icon: HeartHandshake, desc: "Catatan bimbingan & konseling wali kelas" },
@@ -584,6 +585,17 @@ export default function App() {
                 mapelList={mapelList}
                 nilaiList={nilaiList}
                 config={config}
+                initialSubTab="master"
+              />
+            )}
+
+            {activeTab === "nilai-tambah" && (
+              <InputPenilaianView
+                siswaList={siswaList}
+                mapelList={mapelList}
+                nilaiList={nilaiList}
+                config={config}
+                initialSubTab="nilai_tambah"
               />
             )}
 
@@ -621,16 +633,31 @@ export default function App() {
 
             {activeTab === "perangkat_ai" && (
               <GeneratorPerangkatAjarAIView 
-                config={config} 
+                config={config}
+                siswaList={siswaList}
+                mapelList={mapelList}
                 onNavigateToModulAjar={() => setActiveTab("modulai")}
               />
             )}
 
-            {activeTab === "modulai" && <ModulAjarAIView config={config} />}
+            {activeTab === "modulai" && (
+              <ModulAjarAIView
+                config={config}
+                siswaList={siswaList}
+                mapelList={mapelList}
+                onNavigateToLkpd={() => setActiveTab("lkpdai")}
+              />
+            )}
 
             {activeTab === "asistenai" && <AsistenGuruAIView config={config} />}
 
-            {activeTab === "lkpdai" && <GeneratorLkpdAIView config={config} />}
+            {activeTab === "lkpdai" && (
+              <GeneratorLkpdAIView
+                config={config}
+                siswaList={siswaList}
+                mapelList={mapelList}
+              />
+            )}
 
             {activeTab === "ailainnya" && <GeneratorAILainnyaView />}
 

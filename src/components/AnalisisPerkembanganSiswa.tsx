@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Siswa, Mapel, DataNilai } from "../types";
 import { RincianNilaiSiswaModal } from "./RincianNilaiSiswaModal";
+import { categorizeJenisPenilaian } from "./InputPenilaianView";
 
 interface AnalisisPerkembanganSiswaProps {
   siswaList: Siswa[];
@@ -101,13 +102,14 @@ export const AnalisisPerkembanganSiswa: React.FC<AnalisisPerkembanganSiswaProps>
     }
   }, [filteredSiswaList]);
 
-  // Filter nilai berdasarkan kelas dan mapel
+  // Filter nilai berdasarkan kelas dan mapel (kecualikan poin bonus 'nilai_tambah' dari kurva ujian 0-100)
   const filteredNilai = useMemo(() => {
     return nilaiList.filter((n) => {
       const matchKelas = selectedKelas === "ALL" || n.kelas === selectedKelas;
       const matchMapel = selectedMapel === "ALL" || n.mapel === selectedMapel;
       const hasScore = n.nilai !== "" && n.nilai !== undefined && !isNaN(Number(n.nilai));
-      return matchKelas && matchMapel && hasScore;
+      const isExamScore = categorizeJenisPenilaian(n.jenis) !== "nilai_tambah";
+      return matchKelas && matchMapel && hasScore && isExamScore;
     });
   }, [nilaiList, selectedKelas, selectedMapel]);
 

@@ -115,7 +115,7 @@ export const RankingSiswaDashboard: React.FC<RankingSiswaDashboardProps> = ({
         const kontribusiUas = valUas !== null ? Number((valUas * 0.15).toFixed(2)) : 0;
         const nilaiAkhir = calc.nilaiAkhir;
 
-        const hasScore = avgSumatif !== null || valUts !== null || valUas !== null;
+        const hasScore = avgSumatif !== null || valUts !== null || valUas !== null || calc.nilaiTambah > 0;
 
         return {
           rank: 0,

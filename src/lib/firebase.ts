@@ -38,13 +38,14 @@ import {
 } from "../types";
 
 // Firebase Configuration dynamically resolved from Environment Variables
+const env = (typeof import.meta !== "undefined" && import.meta.env) ? import.meta.env : ({} as Record<string, string | undefined>);
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_PENGATURAN_FIREBASE_API_KEY || import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigData.apiKey,
-  authDomain: import.meta.env.VITE_PENGATURAN_FIREBASE_AUTH_DOMAIN || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigData.authDomain,
-  projectId: import.meta.env.VITE_PENGATURAN_FIREBASE_PROJECT_ID || import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigData.projectId,
-  storageBucket: import.meta.env.VITE_PENGATURAN_FIREBASE_STORAGE_BUCKET || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigData.storageBucket,
-  messagingSenderId: import.meta.env.VITE_PENGATURAN_FIREBASE_MESSAGING_SENDER_ID || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigData.messagingSenderId,
-  appId: import.meta.env.VITE_PENGATURAN_FIREBASE_APP_ID || import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigData.appId
+  apiKey: env.VITE_PENGATURAN_FIREBASE_API_KEY || env.VITE_FIREBASE_API_KEY || firebaseConfigData.apiKey,
+  authDomain: env.VITE_PENGATURAN_FIREBASE_AUTH_DOMAIN || env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigData.authDomain,
+  projectId: env.VITE_PENGATURAN_FIREBASE_PROJECT_ID || env.VITE_FIREBASE_PROJECT_ID || firebaseConfigData.projectId,
+  storageBucket: env.VITE_PENGATURAN_FIREBASE_STORAGE_BUCKET || env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigData.storageBucket,
+  messagingSenderId: env.VITE_PENGATURAN_FIREBASE_MESSAGING_SENDER_ID || env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigData.messagingSenderId,
+  appId: env.VITE_PENGATURAN_FIREBASE_APP_ID || env.VITE_FIREBASE_APP_ID || firebaseConfigData.appId
 };
 
 // Initialize Firebase App
@@ -54,7 +55,7 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
 // Use explicit firestoreDatabaseId with auto detect long polling for iframe stability
-const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigData.firestoreDatabaseId || "(default)";
+const dbId = env.VITE_FIREBASE_DATABASE_ID || firebaseConfigData.firestoreDatabaseId || "(default)";
 
 export function isRemixInstance(): boolean {
   return false;

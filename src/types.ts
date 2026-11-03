@@ -138,6 +138,7 @@ export interface ModulFormState {
   formatOutput?: "standar_merdeka" | "deep_learning" | "ringkas_1lembar" | "kemenag_kbc" | "sekolah_format1_iso";
   templateCategory?: "bawaan" | "sekolah";
   docNumberIso?: string;
+  programKhas?: string;
   kepemimpinan?: string;
   spiritualisasi?: string;
   sertakanKop?: boolean;
