@@ -49,9 +49,7 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
     NIP_Kepsek: "",
     Tempat_Tanda_Tangan: "",
     Logo_Kiri: "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU",
-    Logo_Kanan: "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU",
-    username: "www.yefriharyanto.id",
-    password: "123456"
+    Logo_Kanan: "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU"
   });
 
   useEffect(() => {
@@ -66,9 +64,7 @@ export const PengaturanView: React.FC<PengaturanViewProps> = ({
         NIP_Kepsek: config.NIP_Kepsek || "",
         Tempat_Tanda_Tangan: config.Tempat_Tanda_Tangan || "",
         Logo_Kiri: config.Logo_Kiri || "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU",
-        Logo_Kanan: config.Logo_Kanan || "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU",
-        username: config.username || "www.yefriharyanto.id",
-        password: config.password || "123456"
+        Logo_Kanan: config.Logo_Kanan || "https://lh3.googleusercontent.com/d/19TVwFRIp_t7sHTMntziM9SgZVoJAkhQU"
       });
     }
   }, [config]);

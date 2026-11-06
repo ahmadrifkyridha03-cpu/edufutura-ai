@@ -3181,11 +3181,6 @@ ${ttd}
 
 // server.ts
 dotenv.config();
-var firebaseConfigData = {
-  projectId: "witty-moment-pxctm",
-  firestoreDatabaseId: "ai-studio-remixaplikasigur-d65f5706-fc61-4aab-9635-2d037c9c7de3",
-  apiKey: "AIzaSyDOxfbraST4mXXUQ-npkk_705nfJJKvMg0"
-};
 function createApiApp() {
   const app2 = express();
   app2.use(express.json({ limit: "10mb" }));
@@ -3197,6 +3192,30 @@ function createApiApp() {
     } else if (req.url === "/api/index" || req.url === "/index" || req.url === "/api/index.js" || req.url.startsWith("/api/index.js")) {
       req.url = req.originalUrl || req.url;
     }
+    next();
+  });
+  const rateLimitMap = /* @__PURE__ */ new Map();
+  const RATE_LIMIT_WINDOW_MS = 60 * 1e3;
+  const RATE_LIMIT_MAX_REQUESTS = Number(process.env.AI_RATE_LIMIT_MAX) || 30;
+  app2.use(["/api/ai", "/ai"], (req, res, next) => {
+    if (req.method === "GET" || req.method === "OPTIONS") return next();
+    const authHeader = req.headers["authorization"] || "";
+    const clientId = authHeader ? `auth_${authHeader.slice(-24)}` : `ip_${req.ip || req.socket.remoteAddress || "caller"}`;
+    const now = Date.now();
+    const clientData = rateLimitMap.get(clientId);
+    if (!clientData || now > clientData.resetAt) {
+      rateLimitMap.set(clientId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+      return next();
+    }
+    if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+      const waitSeconds = Math.ceil((clientData.resetAt - now) / 1e3);
+      return res.status(429).json({
+        status: "error",
+        code: "RATE_LIMIT_EXCEEDED",
+        message: `Terlalu banyak permintaan generasi AI dalam waktu singkat. Mohon tunggu ${waitSeconds} detik sebelum mencoba kembali.`
+      });
+    }
+    clientData.count += 1;
     next();
   });
   const getAiClient = () => {
@@ -3214,7 +3233,8 @@ function createApiApp() {
     });
   };
   const generateContentWithRetry = async (ai, contents) => {
-    const modelCandidates = [
+    const envModels = process.env.GEMINI_MODEL_CANDIDATES ? process.env.GEMINI_MODEL_CANDIDATES.split(",").map((m) => m.trim()).filter(Boolean) : [];
+    const modelCandidates = envModels.length > 0 ? envModels : [
       "gemini-3.8-flash",
       "gemini-3.5-flash-lite",
       "gemini-2.5-flash",
@@ -3270,26 +3290,13 @@ function createApiApp() {
   app2.post(["/api/auth/login", "/auth/login"], async (req, res) => {
     try {
       const { username, password } = req.body || {};
-      let validUsername = process.env.AUTH_USERNAME || "www.yefriharyanto.id";
-      let validPassword = process.env.AUTH_PASSWORD || "123456";
-      try {
-        const projectId = process.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigData.projectId;
-        const dbId = process.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigData.firestoreDatabaseId || "(default)";
-        const apiKey = process.env.VITE_FIREBASE_API_KEY || firebaseConfigData.apiKey;
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/pengaturan/config?key=${apiKey}`;
-        const dbResponse = await fetch(firestoreUrl, { signal: AbortSignal.timeout(2e3) });
-        if (dbResponse.ok) {
-          const docData = await dbResponse.json();
-          const fields = docData.fields || {};
-          if (fields.username && fields.username.stringValue) {
-            validUsername = fields.username.stringValue;
-          }
-          if (fields.password && fields.password.stringValue) {
-            validPassword = fields.password.stringValue;
-          }
-        }
-      } catch (dbErr) {
-        console.warn("Notice: Using fallback credentials due to Firestore config fetch notice:", dbErr);
+      const validUsername = process.env.AUTH_USERNAME;
+      const validPassword = process.env.AUTH_PASSWORD;
+      if (!validPassword || !validUsername) {
+        return res.status(503).json({
+          status: "error",
+          message: "Autentikasi REST API dinonaktifkan karena kredensial server belum dikonfigurasi. Silakan masuk menggunakan akun Google atau Email resmi via Firebase Auth."
+        });
       }
       if (!username || !password) {
         return res.status(400).json({
@@ -3299,7 +3306,7 @@ function createApiApp() {
       }
       const inputUsername = String(username).trim().toUpperCase();
       const expectedUsername = String(validUsername).trim().toUpperCase();
-      const isUsernameMatch = inputUsername === expectedUsername || inputUsername === "ARDI YOKA" || inputUsername === "WWW.YEFRIHARYANTO.ID";
+      const isUsernameMatch = inputUsername === expectedUsername;
       if (isUsernameMatch && String(password).trim() === validPassword) {
         const timestamp = Date.now();
         const token = Buffer.from(`${String(username).trim()}:${timestamp}:edadmin_pro_secure_session`).toString("base64");
@@ -3307,8 +3314,8 @@ function createApiApp() {
           status: "success",
           token,
           user: {
-            username: "www.yefriharyanto.id",
-            nama: "www.yefriharyanto.id",
+            username: validUsername,
+            nama: validUsername,
             role: "Administrator Guru"
           }
         });

@@ -35,6 +35,7 @@ import {
   PerangkatBabItem 
 } from "../utils/perangkatSyncHelper";
 import { buildCompleteModulAjarHtml } from "../utils/athirahModulBuilder";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 import { AiProgressStepper } from "./AiProgressStepper";
 
 interface ModulAjarAIViewProps {
@@ -1478,7 +1479,7 @@ export const ModulAjarAIView: React.FC<ModulAjarAIViewProps> = ({ config, siswaL
           {generatedHtml && !loading && (
             <div className="max-w-4xl mx-auto bg-white text-black p-6 sm:p-10 shadow-2xl rounded-xl border border-slate-300 text-[11pt] leading-snug space-y-4" style={{ fontFamily: "'Times New Roman', Times, serif" }}>
               <div
-                dangerouslySetInnerHTML={{ __html: generatedHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(generatedHtml) }}
                 className="max-w-none text-black"
               />
             </div>

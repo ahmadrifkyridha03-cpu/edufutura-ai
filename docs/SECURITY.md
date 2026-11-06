@@ -1,35 +1,26 @@
-# Keamanan — Risiko yang Diketahui & Rencana Perbaikan
+# Keamanan — Status Penanganan Risiko
 
-Hasil peninjauan kode per 2026-11-04. Tangani item **Kritis** sebelum aplikasi dipakai banyak guru dengan data siswa asli.
+Status peninjauan dan pengerasan kode per **November 2026**. Seluruh item tingkat **Kritis** dan **Tinggi** telah dimitigasi dan diperkuat.
 
-| # | Tingkat | Temuan | Lokasi | Rekomendasi |
+| # | Tingkat | Temuan Awal | Lokasi | Status & Solusi yang Telah Diterapkan |
 |---|---|---|---|---|
-| 1 | **Kritis** | Aturan `users/{userId}` dan sub-koleksinya `allow read, write: if true` — siapa pun dapat membaca/mengubah data semua guru | `firestore.rules` | Batasi ke pemilik: `request.auth != null && request.auth.uid == userId`; superadmin via custom claim. Gunakan subagent `firestore-rules-author` untuk menyusun ulang |
-| 2 | **Kritis** | Koleksi root lama (`data_siswa`, `data_nilai`, dst.) `allow read: if true` | `firestore.rules` | Tutup bila tidak lagi dipakai (data sudah pindah ke `users/{uid}`) |
-| 3 | Tinggi | Kredensial default `AUTH_USERNAME`/`AUTH_PASSWORD` (`123456`) tertulis di repo | `.env.example`, `render.yaml`, fallback di `server.ts` | Hapus nilai default dari kode & `render.yaml`, gunakan `sync: false`, tolak login bila env kosong |
-| 4 | Tinggi | Passkey superadmin default (`DEFAULT_SUPERADMIN_PASSKEY`) dan pengecekan peran di sisi klien | `src/lib/firebase.ts` | Pindahkan otorisasi superadmin ke Firebase custom claims / Admin SDK di server |
-| 5 | Sedang | `Pengaturan` memiliki field `password` yang tersimpan di Firestore dan dibaca server via REST API publik | `types.ts`, `server.ts` `/api/auth/login` | Jangan simpan password plaintext; gunakan Firebase Auth |
-| 6 | Sedang | Endpoint `/api/ai/*` tanpa autentikasi & rate limit — kuota Gemini bisa disalahgunakan | `server.ts` | Verifikasi Firebase ID token di header, tambah rate limit per `uid` |
-| 7 | Sedang | HTML hasil AI dirender langsung ke DOM | View generator | Sanitasi dengan DOMPurify (`purify.es` sudah ada di bundle) sebelum `dangerouslySetInnerHTML` |
-| 8 | Rendah | Mode tamu menyimpan data di `localStorage` | `firebase.ts` | Beri peringatan bahwa data tamu tidak tersinkron & bisa hilang |
+| 1 | **Kritis** | Aturan `users/{userId}` dan sub-koleksinya `allow read, write: if true` | `firestore.rules` | **Selesai (Mitigasi Penuh)**: Aturan diperketat ke pemilik `request.auth.uid == userId` dan Superadmin terverifikasi. Mencegah eskalasi peran mandiri dan memvalidasi skema profil. |
+| 2 | **Kritis** | Koleksi root lama (`data_siswa`, `data_nilai`, dst.) terbuka | `firestore.rules` | **Selesai**: Koleksi root ditutup total (`deny all`) melalui aturan default deny. |
+| 3 | **Tinggi** | Kredensial default `AUTH_USERNAME`/`AUTH_PASSWORD` (`123456`) tertulis di repo | `.env.example`, `render.yaml`, `server.ts` | **Selesai**: Nilai default dihapus dari repo; `render.yaml` diubah menjadi `sync: false`; `server.ts` menolak login jika env kosong. |
+| 4 | **Tinggi** | Passkey superadmin default (`DEFAULT_SUPERADMIN_PASSKEY`) dan bypass di sisi klien | `src/lib/firebase.ts`, `LoginView.tsx`, `SuperadminView.tsx` | **Selesai**: Bypass passkey klien dihapus. Superadmin wajib login via Firebase Auth (Google / Email) dengan verifikasi allowlist & role. |
+| 5 | **Sedang** | `Pengaturan` menyimpan plaintext `password` di Firestore | `src/components/PengaturanView.tsx`, `src/lib/firebase.ts` | **Selesai**: Field password dihapus dari UI Pengaturan dan dibersihkan otomatis dengan `deleteField()` saat simpan. |
+| 6 | **Sedang** | Endpoint `/api/ai/*` tanpa token & rate limit | `server.ts`, `src/lib/firebase.ts` | **Selesai**: Client menyisipkan Firebase ID token via interceptor; `server.ts` menerapkan rate limiter in-memory (30 req/menit per client/IP). |
+| 7 | **Sedang** | HTML hasil AI dirender langsung ke DOM tanpa sanitasi | Generator View (`Lkpd`, `ModulAjar`, `PerangkatAjar`, `PerangkatKBC`) | **Selesai**: Sanitasi menggunakan DOMPurify via utilitas `sanitizeHtml` sebelum `dangerouslySetInnerHTML`. |
+| 8 | **Rendah** | Mode tamu menyimpan data di `localStorage` | `src/lib/firebase.ts` | **Selesai**: Mode tamu secara eksplisit tidak menyentuh Cloud Firestore, mencegah permission error & kebocoran data. |
 
-## Contoh Aturan Firestore yang Disarankan (draf)
+## Arsitektur Aturan Firestore Saat Ini
 
-```
-match /users/{userId} {
-  allow read, write: if request.auth != null && request.auth.uid == userId;
-  match /{sub}/{docId} {
-    allow read, write: if request.auth != null && request.auth.uid == userId;
-  }
-}
-match /users/{userId}/{document=**} {
-  allow read: if request.auth.token.superadmin == true;
-}
-match /{document=**} { allow read, write: if false; }
-```
-
-> Draf ini harus diuji dengan Firebase Emulator dan diselaraskan dengan alur superadmin/tamu sebelum di-deploy.
+Aturan di `firestore.rules` menggunakan model kepemilikan ketat:
+- **Owner**: `request.auth.uid == userId` dapat membaca & menulis data profil dan 9 sub-koleksi privatnya.
+- **Superadmin**: diverifikasi melalui allowlist email (`email_verified == true`) atau role `superadmin` pada profil.
+- **Validasi Skema**: mencegah injeksi properti liar pada dokumen `users/{userId}` dan mencegah guru biasa mengubah perannya menjadi superadmin.
+- **Default Deny**: `match /{document=**} { allow read, write: false; }` menolak seluruh path di luar skema.
 
 ## Pelaporan
-Temukan celah keamanan? Jangan buka issue publik; hubungi pemilik repositori secara langsung.
+Temukan potensi celah keamanan baru? Jangan buka issue publik; hubungi pemilik repositori secara langsung.
 

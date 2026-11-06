@@ -28,6 +28,7 @@ import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../l
 import { buildKurikulumMerdekaDocument } from "../utils/kurikulumMerdekaBuilder";
 import { savePerangkatSyncData, extractSyncDataFromPerangkat } from "../utils/perangkatSyncHelper";
 import { AiProgressStepper } from "./AiProgressStepper";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 interface GeneratorPerangkatAjarAIViewProps {
   config: Pengaturan;
@@ -2037,7 +2038,7 @@ Fokuskan seluruh TP dan ATP pada pemecahan masalah kontekstual dan integrasi unj
           {generatedDocs[activeDoc] ? (
             <div
               className="bg-white text-slate-900 p-8 rounded-xl shadow-xl border border-slate-300 max-w-5xl mx-auto font-sans leading-relaxed text-sm"
-              dangerouslySetInnerHTML={{ __html: generatedDocs[activeDoc] }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(generatedDocs[activeDoc]) }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">

@@ -4,8 +4,19 @@ Format mengikuti [Keep a Changelog](https://keepachangelog.com/id-ID/1.1.0/).
 
 ## [Unreleased]
 
-### Ditambahkan
-- Dokumentasi pengembangan lengkap di `docs/` dan `AGENTS.md`.
+### Keamanan (Security Hardening)
+- **Pengerasan Firestore Rules**: Mengisolasi data tiap guru ke `users/{userId}` dengan verifikasi kepemilikan ketat, allowlist superadmin ber-email terverifikasi, validasi skema profil, dan menutup seluruh koleksi root publik lama.
+- **Penghapusan Kredensial Default**: Menghapus password default `123456` dan username default dari `.env.example`, `render.yaml`, dan `server.ts`.
+- **Penghapusan Passkey Client-Side Superadmin**: Menghapus bypass passkey di browser; Superadmin kini wajib login melalui Firebase Auth (Google / Email) dengan verifikasi otoritas di Firestore rules.
+- **Pembersihan Password Plaintext Pengaturan**: Menghapus field password dari UI Pengaturan dan membersihkannya otomatis via `deleteField()` saat sinkronisasi profil.
+- **Rate Limiting & Token Interceptor API AI**: Menambahkan interceptor client yang menyematkan Firebase ID token pada pemanggilan `/api/*` serta rate limiter in-memory pada `server.ts` (30 req/menit per pemanggil).
+- **Sanitasi HTML Output AI**: Mencegah kerentanan XSS dengan sanitasi DOMPurify pada seluruh penampil dokumen AI (`ModulAjar`, `Lkpd`, `PerangkatAjar`, `PerangkatKBC`).
+
+### Peningkatan & Pemeliharaan
+- Menambahkan **GitHub Actions CI Workflow** (`.github/workflows/ci.yml`) untuk verifikasi otomatis tipe data (`npm run lint`) dan build produksi (`npm run build`).
+- Mengubah nama paket di `package.json` dari `react-example` menjadi `edufutura-ai` v1.0.0.
+- Menambahkan dukungan konfigurasi urutan model Gemini via environment variable `GEMINI_MODEL_CANDIDATES`.
+- Mode Tamu secara eksplisit diisolasi ke localStorage tanpa memicu error permission pada Cloud Firestore.
 
 ## [2026-11-04]
 

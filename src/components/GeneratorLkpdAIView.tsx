@@ -20,6 +20,7 @@ import {
   PerangkatBabItem
 } from "../utils/perangkatSyncHelper";
 import { buildPerMeetingLkpdHtml } from "../utils/athirahModulBuilder";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 import {
   notifySimpanSuccess,
   notifySimpanError,
@@ -589,7 +590,7 @@ export const GeneratorLkpdAIView: React.FC<GeneratorLkpdAIViewProps> = ({
               className="max-w-4xl mx-auto bg-white text-black p-6 sm:p-10 shadow-2xl rounded-xl border border-slate-300 text-[11pt] leading-snug"
               style={{ fontFamily: "'Times New Roman', Times, serif" }}
             >
-              <div dangerouslySetInnerHTML={{ __html: generatedHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(generatedHtml) }} />
             </div>
           </div>
         </div>

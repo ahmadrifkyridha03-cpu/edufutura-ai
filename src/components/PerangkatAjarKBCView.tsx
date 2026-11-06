@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Pengaturan } from "../types";
 import { notifySimpanSuccess, notifySimpanError, notifyUnduhSuccess } from "../lib/swal";
+import { sanitizeHtml } from "../utils/sanitizeHtml";
 
 interface PerangkatAjarKBCViewProps {
   config: Pengaturan;
@@ -1149,7 +1150,7 @@ Peserta didik mampu menerapkan adab islami terhadap orang tua, guru, sesama manu
           {generatedDocs[activeDoc] ? (
             <div
               className="bg-white text-slate-900 p-8 rounded-xl shadow-md border border-slate-300 max-w-5xl mx-auto font-sans leading-relaxed text-sm"
-              dangerouslySetInnerHTML={{ __html: generatedDocs[activeDoc] }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(generatedDocs[activeDoc]) }}
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">

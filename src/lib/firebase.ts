@@ -9,7 +9,8 @@ import {
   deleteDoc, 
   onSnapshot, 
   getDocs,
-  writeBatch
+  writeBatch,
+  deleteField
 } from "firebase/firestore";
 import {
   getAuth,
@@ -119,6 +120,35 @@ export function getScopedStorageKey(collectionName: string, userId?: string): st
   return uid ? `edadmin_teacher_${uid}_${collectionName}` : `edadmin_remix_db_${collectionName}`;
 }
 
+/**
+ * Mode tamu (uid diawali "tamu_") dan sesi tanpa Firebase Auth hanya memakai localStorage.
+ * Firestore Rules menolak akses tanpa autentikasi, jadi kita tidak mencoba menulis ke cloud.
+ */
+export function isGuestUid(uid?: string | null): boolean {
+  return !!uid && uid.startsWith("tamu_");
+}
+
+export function isCloudSyncEnabled(userId?: string): boolean {
+  const uid = userId !== undefined ? userId : currentActiveUserId;
+  if (!uid || isGuestUid(uid) || uid === "superadmin_master") return false;
+  return !!auth.currentUser;
+}
+
+/** Batas resmi Firestore: maksimal 500 operasi per batch. */
+const FIRESTORE_BATCH_LIMIT = 450;
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function getMigrationFlagKey(collectionName: string, uid: string): string {
+  return `edadmin_cloud_synced_${uid}_${collectionName}`;
+}
+
 export function getFirestoreColRef(collectionName: string, userId?: string) {
   const uid = userId !== undefined ? userId : currentActiveUserId;
   if (uid) {
@@ -172,8 +202,23 @@ export function subscribeCollection<T>(
     callback(initialCached);
   }
 
-  // 2. Real-time subscription to Cloud Firestore (per-user subcollection or root)
+  // 2. Mode lokal (tamu / belum login): tidak ada sinkronisasi cloud
+  if (!isCloudSyncEnabled(targetUid)) {
+    if (initialCached.length === 0) callback([]);
+    const handler = (e: Event) => callback(((e as CustomEvent).detail as T[]) || []);
+    if (typeof window !== "undefined") {
+      window.addEventListener(`edadmin_remix_db_update_${collectionName}`, handler);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener(`edadmin_remix_db_update_${collectionName}`, handler);
+      }
+    };
+  }
+
+  // 3. Real-time subscription to Cloud Firestore (per-user subcollection)
   const colRef = getFirestoreColRef(collectionName, targetUid);
+  const migrationKey = getMigrationFlagKey(collectionName, targetUid);
   return onSnapshot(
     colRef, 
     (snapshot) => {
@@ -182,13 +227,25 @@ export function subscribeCollection<T>(
         items.push({ id: docSnap.id, ...docSnap.data() } as unknown as T);
       });
 
-      // Auto-migrate: If Firestore is currently empty, but local cache has items, push to Firestore
-      if (items.length === 0 && initialCached.length > 0) {
-        batchSaveDocuments(collectionName, initialCached as any[], targetUid).catch((err) => {
-          console.warn(`Auto-migration notice on ${collectionName}:`, err);
-        });
+      const alreadySynced = typeof window !== "undefined" && localStorage.getItem(migrationKey) === "1";
+
+      // Auto-migrate satu kali saja: data lokal lama didorong ke Firestore bila cloud masih kosong.
+      // Setelah pernah tersinkron, cloud adalah sumber kebenaran sehingga data yang dihapus
+      // di perangkat lain tidak "hidup kembali" dari cache lokal yang usang.
+      if (items.length === 0 && initialCached.length > 0 && !alreadySynced && !snapshot.metadata.fromCache) {
+        batchSaveDocuments(collectionName, initialCached as any[], targetUid)
+          .then(() => {
+            if (typeof window !== "undefined") localStorage.setItem(migrationKey, "1");
+          })
+          .catch((err) => {
+            console.warn(`Auto-migration notice on ${collectionName}:`, err);
+          });
         callback(initialCached);
         return;
+      }
+
+      if (!snapshot.metadata.fromCache && typeof window !== "undefined") {
+        localStorage.setItem(migrationKey, "1");
       }
 
       // Sync local cache
@@ -216,6 +273,7 @@ export async function saveDocument(collectionName: string, id: string, data: Rec
     current.push(updatedItem);
   }
   setRemixStorage(collectionName, current, targetUid);
+  if (!isCloudSyncEnabled(targetUid)) return;
 
   try {
     const docRef = getFirestoreDocRef(collectionName, id, targetUid);
@@ -235,6 +293,7 @@ export async function deleteDocument(collectionName: string, id: string, userId?
     const filtered = current.filter((item) => item.id !== id);
     setRemixStorage(collectionName, filtered, targetUid);
   }
+  if (!isCloudSyncEnabled(targetUid)) return;
 
   try {
     const docRef = getFirestoreDocRef(collectionName, id, targetUid);
@@ -269,14 +328,18 @@ export async function batchSaveDocuments(
     }
   });
   setRemixStorage(collectionName, current, targetUid);
+  if (!isCloudSyncEnabled(targetUid)) return;
 
   try {
-    const batch = writeBatch(firestore);
-    items.forEach((item) => {
-      const docRef = getFirestoreDocRef(collectionName, item.id, targetUid);
-      batch.set(docRef, { ...item, updatedAt: Date.now() }, { merge: true });
-    });
-    await batch.commit();
+    // Pecah per 450 dokumen agar tidak melewati batas 500 operasi per batch Firestore
+    for (const chunk of chunkArray(items, FIRESTORE_BATCH_LIMIT)) {
+      const batch = writeBatch(firestore);
+      chunk.forEach((item) => {
+        const docRef = getFirestoreDocRef(collectionName, item.id, targetUid);
+        batch.set(docRef, { ...item, updatedAt: Date.now() }, { merge: true });
+      });
+      await batch.commit();
+    }
   } catch (err: any) {
     console.error(`Error batch saving documents in ${collectionName}:`, err);
     throw err;
@@ -294,14 +357,17 @@ export async function batchDeleteDocuments(collectionName: string, ids: string[]
     const filtered = current.filter((item) => !idSet.has(item.id));
     setRemixStorage(collectionName, filtered, targetUid);
   }
+  if (!isCloudSyncEnabled(targetUid)) return;
 
   try {
-    const batch = writeBatch(firestore);
-    ids.forEach((id) => {
-      const docRef = getFirestoreDocRef(collectionName, id, targetUid);
-      batch.delete(docRef);
-    });
-    await batch.commit();
+    for (const chunk of chunkArray(ids, FIRESTORE_BATCH_LIMIT)) {
+      const batch = writeBatch(firestore);
+      chunk.forEach((id) => {
+        const docRef = getFirestoreDocRef(collectionName, id, targetUid);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+    }
   } catch (err: any) {
     console.error(`Error batch deleting documents in ${collectionName}:`, err);
     throw err;
@@ -321,10 +387,13 @@ export async function savePengaturan(config: Pengaturan, userId?: string) {
     localStorage.setItem(cacheKey, JSON.stringify(config));
     window.dispatchEvent(new CustomEvent("edadmin_remix_db_update_pengaturan", { detail: config }));
   }
+  if (!isCloudSyncEnabled(targetUid)) return;
 
   try {
     const docRef = getFirestoreDocRef(COLLECTIONS.PENGATURAN, "config", targetUid);
-    await setDoc(docRef, { ...config, updatedAt: Date.now() }, { merge: true });
+    // Field `password` lama (plaintext) tidak boleh tersimpan di Firestore: hapus bila masih ada.
+    const { password: _legacyPassword, ...safeConfig } = config;
+    await setDoc(docRef, { ...safeConfig, password: deleteField(), updatedAt: Date.now() }, { merge: true });
   } catch (err: any) {
     console.error("Error saving pengaturan:", err);
     throw err;
@@ -348,6 +417,21 @@ export function subscribePengaturan(callback: (config: Pengaturan) => void, user
         console.warn("Could not parse isolated local pengaturan cache:", e);
       }
     }
+  }
+
+  if (!isCloudSyncEnabled(targetUid)) {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as Pengaturan | undefined;
+      if (detail) callback(detail);
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("edadmin_remix_db_update_pengaturan", handler);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("edadmin_remix_db_update_pengaturan", handler);
+      }
+    };
   }
 
   const docRef = getFirestoreDocRef(COLLECTIONS.PENGATURAN, "config", targetUid);
@@ -381,8 +465,13 @@ export function subscribePengaturan(callback: (config: Pengaturan) => void, user
 
 export async function saveTeacherProfile(userId: string, data: Partial<GuruUser>): Promise<void> {
   if (typeof window !== "undefined") {
-    localStorage.setItem(`edadmin_profile_${userId}`, JSON.stringify(data));
+    let previous: Partial<GuruUser> = {};
+    try {
+      previous = JSON.parse(localStorage.getItem(`edadmin_profile_${userId}`) || "{}");
+    } catch {}
+    localStorage.setItem(`edadmin_profile_${userId}`, JSON.stringify({ ...previous, ...data }));
   }
+  if (isGuestUid(userId) || !auth.currentUser) return;
   try {
     const userDocRef = doc(firestore, "users", userId);
     await setDoc(userDocRef, { ...data, updatedAt: Date.now() }, { merge: true });
@@ -415,62 +504,38 @@ export async function getTeacherProfile(userId: string): Promise<GuruUser | null
 
 // ============================================================================
 // Superadmin Master Authorization & Role Helpers
+// ----------------------------------------------------------------------------
+// Superadmin WAJIB login lewat Firebase Auth (Google / email terverifikasi).
+// Passkey statis di sisi klien dihapus karena siapa pun dapat membacanya dari bundle JS.
+// Otorisasi sebenarnya ditegakkan oleh firestore.rules (allowlist email + role di profil).
 // ============================================================================
-export const DEFAULT_SUPERADMIN_PASSKEY = "superadmin2026";
+const SUPERADMIN_EMAILS = [
+  "ahmadrifkyridha@gmail.com",
+  "superadmin@edufutura.ai",
+  "admin@edufutura.ai"
+];
 
-export function isSuperadminEmail(email?: string | null): boolean {
-  if (!email) return false;
-  const clean = email.toLowerCase().trim();
-  return (
-    clean === "ahmadrifkyridha@gmail.com" || 
-    clean === "superadmin@edufutura.ai" || 
-    clean === "admin@edufutura.ai" ||
-    clean.startsWith("superadmin@")
-  );
+export function isSuperadminEmail(email?: string | null, emailVerified: boolean = true): boolean {
+  if (!email || !emailVerified) return false;
+  return SUPERADMIN_EMAILS.includes(email.toLowerCase().trim());
 }
 
-export function getSuperAdminPasskey(): string {
-  if (typeof window === "undefined") return DEFAULT_SUPERADMIN_PASSKEY;
-  return localStorage.getItem("edadmin_superadmin_passkey") || DEFAULT_SUPERADMIN_PASSKEY;
+function resolveRole(firebaseUser: FirebaseUser, profile: GuruUser | null): "superadmin" | "guru" {
+  if (isSuperadminEmail(firebaseUser.email, firebaseUser.emailVerified)) return "superadmin";
+  return profile?.role === "superadmin" ? "superadmin" : "guru";
 }
 
-export function setSuperAdminPasskey(newKey: string): void {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("edadmin_superadmin_passkey", newKey);
+/**
+ * Login superadmin: autentikasi dengan Google atau email/password, lalu pastikan akun
+ * memang memiliki otoritas superadmin. Bila tidak, sesi langsung ditutup.
+ */
+export async function loginAsSuperAdmin(method: "google" | "email", email?: string, pass?: string): Promise<GuruUser> {
+  const user = method === "google" ? await loginWithGoogle() : await loginWithEmail(email || "", pass || "");
+  if (user.role !== "superadmin") {
+    await logoutUser();
+    throw new Error("Akun ini tidak memiliki otoritas Superadmin. Hubungi pemilik aplikasi untuk mendapatkan akses.");
   }
-}
-
-export async function loginAsSuperAdmin(passkey: string, name?: string): Promise<GuruUser> {
-  const currentKey = getSuperAdminPasskey();
-  const validKeys = [currentKey, "superadmin2026", "admin123"];
-  if (!validKeys.includes(passkey.trim())) {
-    throw new Error("Master Passkey Superadmin tidak valid! Periksa kembali kode akses Anda.");
-  }
-
-  const superAdminUser: GuruUser = {
-    uid: "superadmin_master",
-    email: "superadmin@edufutura.ai",
-    displayName: name?.trim() || "Super Administrator",
-    photoURL: null,
-    nip: "19880101-SUPERADMIN",
-    sekolah: "EDUFUTURA AI KEMENTERIAN / MASTER HQ",
-    mapelUtama: "Super Administrator / Seluruh Akses",
-    isGuest: false,
-    role: "superadmin",
-    createdAt: Date.now()
-  };
-
-  if (typeof window !== "undefined") {
-    localStorage.setItem("edadmin_superadmin_user", JSON.stringify(superAdminUser));
-    localStorage.setItem("edadmin_active_uid", "superadmin_master");
-  }
-
-  try {
-    await saveTeacherProfile("superadmin_master", superAdminUser);
-  } catch {}
-
-  setActiveUserId("superadmin_master");
-  return superAdminUser;
+  return user;
 }
 
 export async function getAllRegisteredTeachers(): Promise<GuruUser[]> {
@@ -532,7 +597,6 @@ export async function loginWithGoogle(): Promise<GuruUser> {
   const user = result.user;
   
   const existingProfile = await getTeacherProfile(user.uid);
-  const isSuper = isSuperadminEmail(user.email) || existingProfile?.role === "superadmin";
   const guruUser: GuruUser = {
     uid: user.uid,
     email: user.email,
@@ -542,7 +606,7 @@ export async function loginWithGoogle(): Promise<GuruUser> {
     sekolah: existingProfile?.sekolah || "",
     mapelUtama: existingProfile?.mapelUtama || "",
     isGuest: false,
-    role: isSuper ? "superadmin" : (existingProfile?.role || "guru"),
+    role: resolveRole(user, existingProfile),
     createdAt: existingProfile?.createdAt || Date.now()
   };
 
@@ -556,7 +620,6 @@ export async function loginWithEmail(email: string, pass: string): Promise<GuruU
   const user = result.user;
   
   const existingProfile = await getTeacherProfile(user.uid);
-  const isSuper = isSuperadminEmail(user.email) || existingProfile?.role === "superadmin";
   const guruUser: GuruUser = {
     uid: user.uid,
     email: user.email,
@@ -566,7 +629,7 @@ export async function loginWithEmail(email: string, pass: string): Promise<GuruU
     sekolah: existingProfile?.sekolah || "",
     mapelUtama: existingProfile?.mapelUtama || "",
     isGuest: false,
-    role: isSuper ? "superadmin" : (existingProfile?.role || "guru"),
+    role: resolveRole(user, existingProfile),
     createdAt: existingProfile?.createdAt || Date.now()
   };
 
@@ -663,22 +726,13 @@ export async function sendResetPassword(email: string): Promise<void> {
 }
 
 export function subscribeAuthUser(callback: (user: GuruUser | null) => void): () => void {
-  // 1. Check persistent Superadmin session first
+  // Bersihkan sesi superadmin berbasis passkey versi lama (tidak lagi didukung)
   if (typeof window !== "undefined") {
-    const superAdminRaw = localStorage.getItem("edadmin_superadmin_user");
-    if (superAdminRaw) {
-      try {
-        const superAdmin = JSON.parse(superAdminRaw) as GuruUser;
-        if (superAdmin && superAdmin.role === "superadmin") {
-          setActiveUserId(superAdmin.uid);
-          callback(superAdmin);
-          return () => {};
-        }
-      } catch {}
-    }
+    localStorage.removeItem("edadmin_superadmin_user");
+    localStorage.removeItem("edadmin_superadmin_passkey");
   }
 
-  // 2. Check guest mode second
+  // 1. Mode tamu (data hanya di perangkat ini)
   if (typeof window !== "undefined") {
     const guestRaw = localStorage.getItem("edadmin_guest_user");
     if (guestRaw) {
@@ -697,7 +751,6 @@ export function subscribeAuthUser(callback: (user: GuruUser | null) => void): ()
     if (firebaseUser) {
       setActiveUserId(firebaseUser.uid);
       const profile = await getTeacherProfile(firebaseUser.uid);
-      const isSuper = isSuperadminEmail(firebaseUser.email) || profile?.role === "superadmin";
       const guruUser: GuruUser = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -707,25 +760,13 @@ export function subscribeAuthUser(callback: (user: GuruUser | null) => void): ()
         sekolah: profile?.sekolah || "",
         mapelUtama: profile?.mapelUtama || "",
         isGuest: false,
-        role: isSuper ? "superadmin" : (profile?.role || "guru"),
+        role: resolveRole(firebaseUser, profile),
         createdAt: profile?.createdAt || Date.now()
       };
       callback(guruUser);
     } else {
-      // Check if superadmin or guest was set in meantime
+      // Check if guest was set in meantime
       if (typeof window !== "undefined") {
-        const superAdminRaw = localStorage.getItem("edadmin_superadmin_user");
-        if (superAdminRaw) {
-          try {
-            const superAdmin = JSON.parse(superAdminRaw) as GuruUser;
-            if (superAdmin && superAdmin.role === "superadmin") {
-              setActiveUserId(superAdmin.uid);
-              callback(superAdmin);
-              return;
-            }
-          } catch {}
-        }
-
         const guestRaw = localStorage.getItem("edadmin_guest_user");
         if (guestRaw) {
           try {
@@ -797,14 +838,15 @@ export async function clearAllDatabaseCollections(userId?: string) {
   collectionsToClear.forEach((colName) => {
     setRemixStorage(colName, [], targetUid);
   });
+  if (!isCloudSyncEnabled(targetUid)) return;
 
   for (const colName of collectionsToClear) {
     try {
       const colRef = getFirestoreColRef(colName, targetUid);
       const snapshot = await getDocs(colRef);
-      if (!snapshot.empty) {
+      for (const chunk of chunkArray(snapshot.docs, FIRESTORE_BATCH_LIMIT)) {
         const batch = writeBatch(firestore);
-        snapshot.docs.forEach((docSnap) => {
+        chunk.forEach((docSnap) => {
           batch.delete(docSnap.ref);
         });
         await batch.commit();
@@ -813,4 +855,34 @@ export async function clearAllDatabaseCollections(userId?: string) {
       console.warn(`Notice while clearing collection ${colName}:`, err);
     }
   }
+}
+
+// ============================================================================
+// Header Autentikasi untuk Endpoint /api/*
+// ----------------------------------------------------------------------------
+// Menyisipkan Firebase ID token (bila pengguna login) ke setiap request same-origin
+// menuju /api/ agar server dapat memverifikasi pemanggil dan menerapkan rate limit per guru.
+// ============================================================================
+let apiAuthInterceptorInstalled = false;
+
+export function installApiAuthInterceptor(): void {
+  if (typeof window === "undefined" || apiAuthInterceptorInstalled) return;
+  apiAuthInterceptorInstalled = true;
+  const originalFetch = window.fetch.bind(window);
+
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    try {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      const isApiCall = url.startsWith("/api/") || url.startsWith(`${window.location.origin}/api/`);
+      if (isApiCall && auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+        if (!headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+        return originalFetch(input, { ...init, headers });
+      }
+    } catch (err) {
+      console.warn("Notice: gagal menyisipkan token autentikasi API:", err);
+    }
+    return originalFetch(input, init);
+  };
 }

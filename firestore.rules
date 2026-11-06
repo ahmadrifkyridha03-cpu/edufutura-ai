@@ -1,101 +1,192 @@
 rules_version = '2';
 
+// ===============================================================
+// EduFutura AI — Firestore Security Rules (PROTOTIPE, wajib direview & dites)
+// ===============================================================
+//
+// Model Data yang Diasumsikan
+// ---------------------------------------------------------------
+// Koleksi: users
+// Document ID: {userId} = Firebase Auth UID guru
+// Field (ditulis klien via setDoc(..., { merge: true })):
+//   - uid:         string  (opsional, bila ada WAJIB == userId, immutable)
+//   - email:       string | null (opsional, <= 254 karakter; milik sendiri harus == email token)
+//   - displayName: string | null (opsional, <= 200 karakter)
+//   - photoURL:    string | null (opsional, <= 2048 karakter)
+//   - nip:         string  (opsional, <= 100 karakter)
+//   - sekolah:     string  (opsional, <= 300 karakter)
+//   - mapelUtama:  string  (opsional, <= 300 karakter)
+//   - isGuest:     bool    (opsional)
+//   - role:        "guru" | "superadmin" (opsional; HANYA superadmin yang boleh
+//                  memberi/mengubah role. Pemilik hanya boleh "guru" saat create,
+//                  atau mengisi "guru" bila sebelumnya kosong.)
+//   - createdAt:   number (epoch ms, opsional, immutable setelah terisi)
+//   - updatedAt:   number (epoch ms, opsional)
+//
+// Sub-koleksi privat: users/{userId}/{subCollection}/{docId}
+//   subCollection ∈ data_siswa, mapel, jadwal, log_absensi, data_nilai,
+//   jurnal_agenda, siswa_bimbingan, bimbingan_wali, pengaturan (doc "config")
+//   Isi: map bebas (skema fleksibel), ditulis dengan setDoc merge & batch delete.
+//
+// Koleksi root lama (data_siswa, mapel, jadwal, log_absensi, data_nilai,
+// jurnal_agenda, siswa_bimbingan, bimbingan_wali, pengaturan, perangkat_ajar_ai)
+// TIDAK lagi dipakai aplikasi -> ditolak oleh default deny di bawah.
+// ===============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions for schema integrity
-    function isNonEmptyString(val) {
-      return val is string && val.size() > 0 && val.size() <= 500;
+    // ===========================================================
+    // Helper Functions
+    // ===========================================================
+
+    // Pengguna sudah login (Google / email-password)
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // 0. Akun Pengguna & Ruang Data Terisolasi per Guru
-    match /users/{userId} {
-      allow read, write: if true;
+    // Pemanggil adalah pemilik ruang data {userId}
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
 
-      // Sub-koleksi privat guru: data_siswa, mapel, jadwal, log_absensi, data_nilai, jurnal_agenda, siswa_bimbingan, bimbingan_wali, pengaturan
+    // Superadmin bootstrap: email terverifikasi dan ada di allowlist (dari token Auth, bukan data klien)
+    function isAllowlistedSuperadmin() {
+      return isAuthenticated()
+          && request.auth.token.get('email_verified', false) == true
+          && request.auth.token.get('email', '') in [
+               'ahmadrifkyridha@gmail.com',
+               'superadmin@edufutura.ai',
+               'admin@edufutura.ai'
+             ];
+    }
+
+    // Superadmin berbasis role di profil SENDIRI (users/{auth.uid}).
+    // Aman karena non-superadmin tidak bisa menulis role ke profilnya (lihat validator).
+    // Catatan: memakai 1 get() (dihitung sebagai 1 read billing per evaluasi).
+    function hasSuperadminRole() {
+      let profilePath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAuthenticated()
+          && exists(profilePath)
+          && get(profilePath).data.get('role', '') == 'superadmin';
+    }
+
+    // Allowlist dicek dulu (tanpa biaya get) baru role dokumen
+    function isSuperadmin() {
+      return isAllowlistedSuperadmin() || hasSuperadminRole();
+    }
+
+    // String opsional: bila ada harus string dengan panjang <= maxLen
+    function isOptionalString(data, field, maxLen) {
+      return !(field in data)
+          || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // String-atau-null opsional
+    function isOptionalStringOrNull(data, field, maxLen) {
+      return !(field in data)
+          || data[field] == null
+          || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    // Angka opsional (epoch ms) dalam rentang wajar
+    function isOptionalEpoch(data, field) {
+      return !(field in data)
+          || (data[field] is number && data[field] >= 0 && data[field] <= 32503680000000);
+    }
+
+    // ===========================================================
+    // Domain Validator: Profil Guru (dipakai di create DAN update)
+    // ===========================================================
+    function isValidTeacherProfile(data, userId) {
+      return data.keys().hasOnly([
+               'uid', 'email', 'displayName', 'photoURL', 'nip', 'sekolah',
+               'mapelUtama', 'isGuest', 'role', 'createdAt', 'updatedAt'
+             ])
+          // uid bila ada harus sama dengan ID dokumen (anti pembajakan identitas)
+          && (!('uid' in data) || data.uid == userId)
+          && isOptionalStringOrNull(data, 'email', 254)
+          && isOptionalStringOrNull(data, 'displayName', 200)
+          && isOptionalStringOrNull(data, 'photoURL', 2048)
+          && isOptionalString(data, 'nip', 100)
+          && isOptionalString(data, 'sekolah', 300)
+          && isOptionalString(data, 'mapelUtama', 300)
+          && (!('isGuest' in data) || data.isGuest is bool)
+          && (!('role' in data) || data.role in ['guru', 'superadmin'])
+          && isOptionalEpoch(data, 'createdAt')
+          && isOptionalEpoch(data, 'updatedAt');
+    }
+
+    // Email di profil milik sendiri tidak boleh dipalsukan: null/absen atau == email token
+    function ownerEmailMatchesToken(data) {
+      return !('email' in data)
+          || data.email == null
+          || data.email == request.auth.token.get('email', null);
+    }
+
+    // Pemilik membuat profil: role absen atau "guru" (tidak boleh mengangkat diri jadi superadmin)
+    function isOwnerProfileCreate(userId) {
+      let data = request.resource.data;
+      return isOwner(userId)
+          && isValidTeacherProfile(data, userId)
+          && ownerEmailMatchesToken(data)
+          && (!('role' in data) || data.role == 'guru');
+    }
+
+    // Pemilik memperbarui profil (request.resource.data = hasil merge):
+    //  - role tidak berubah, ATAU sebelumnya kosong lalu diisi "guru" (bukan eskalasi)
+    //  - createdAt tidak berubah bila sudah terisi
+    function isOwnerProfileUpdate(userId) {
+      let data = request.resource.data;
+      let oldRole = resource.data.get('role', null);
+      let newRole = data.get('role', null);
+      return isOwner(userId)
+          && isValidTeacherProfile(data, userId)
+          && ownerEmailMatchesToken(data)
+          && (newRole == oldRole || (oldRole == null && newRole == 'guru'))
+          && (!('createdAt' in resource.data) || data.get('createdAt', null) == resource.data.createdAt);
+    }
+
+    // ===========================================================
+    // 0. Profil Guru & Ruang Data Terisolasi per Guru
+    // ===========================================================
+    match /users/{userId} {
+      // Baca: pemilik sendiri, atau superadmin (termasuk list seluruh guru)
+      allow read: if isOwner(userId) || isSuperadmin();
+
+      // Buat: pemilik (role hanya "guru"/absen) atau superadmin (boleh set role apa pun yang valid)
+      allow create: if isOwnerProfileCreate(userId)
+                    || (isSuperadmin() && isValidTeacherProfile(request.resource.data, userId));
+
+      // Ubah: pemilik (role terkunci) atau superadmin (boleh ubah role), skema tetap divalidasi
+      allow update: if isOwnerProfileUpdate(userId)
+                    || (isSuperadmin() && isValidTeacherProfile(request.resource.data, userId));
+
+      // Hapus: pemilik atau superadmin
+      allow delete: if isOwner(userId) || isSuperadmin();
+
+      // Sub-koleksi privat guru: data_siswa, mapel, jadwal, log_absensi, data_nilai,
+      // jurnal_agenda, siswa_bimbingan, bimbingan_wali, pengaturan
       match /{subCollection}/{docId} {
-        allow read, write: if true;
+        allow read, delete: if (isOwner(userId) || isSuperadmin())
+                            && isAllowedSubCollection(subCollection);
+        allow create, update: if (isOwner(userId) || isSuperadmin())
+                              && isAllowedSubCollection(subCollection)
+                              && request.resource.data is map;
       }
     }
 
-    // 1. Data Siswa
-    match /data_siswa/{siswaId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.nama is string
-                           && request.resource.data.kelas is string
-                           && request.resource.data.nama.size() > 0;
-      allow delete: if true;
+    // Hanya sub-koleksi resmi yang boleh diakses
+    function isAllowedSubCollection(name) {
+      return name in [
+        'data_siswa', 'mapel', 'jadwal', 'log_absensi', 'data_nilai',
+        'jurnal_agenda', 'siswa_bimbingan', 'bimbingan_wali', 'pengaturan'
+      ];
     }
 
-    // 2. Mata Pelajaran
-    match /mapel/{mapelId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.namaMapel is string
-                           && request.resource.data.namaMapel.size() > 0;
-      allow delete: if true;
-    }
-
-    // 3. Jadwal Mengajar
-    match /jadwal/{jadwalId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.hari is string;
-      allow delete: if true;
-    }
-
-    // 4. Log Presensi Siswa
-    match /log_absensi/{logId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.idSiswa is string
-                           && request.resource.data.status is string;
-      allow delete: if true;
-    }
-
-    // 5. Data Nilai
-    match /data_nilai/{nilaiId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.idSiswa is string
-                           && (request.resource.data.nilai is number || request.resource.data.nilai is string);
-      allow delete: if true;
-    }
-
-    // 6. Jurnal & Agenda Mengajar
-    match /jurnal_agenda/{agendaId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if true;
-    }
-
-    // 7. Siswa Bimbingan Wali
-    match /siswa_bimbingan/{sbId} {
-      allow read: if true;
-      allow create, update: if request.resource.data.nama is string;
-      allow delete: if true;
-    }
-
-    // 8. Catatan Bimbingan Wali
-    match /bimbingan_wali/{bwId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if true;
-    }
-
-    // 9. Pengaturan & Profil Aplikasi
-    match /pengaturan/{configId} {
-      allow read: if true;
-      allow create, update: if request.resource.data is map;
-      allow delete: if false; // Mencegah penghapusan master config
-    }
-
-    // 10. Dokumen Perangkat Ajar & Modul Ajar AI Cache
-    match /perangkat_ajar_ai/{docId} {
-      allow read: if true;
-      allow create, update: if request.resource.data is map;
-      allow delete: if true;
-    }
-
-    // DEFAULT DENY: Tolak semua koleksi lain di luar skema resmi
+    // DEFAULT DENY: Tolak semua koleksi lain (termasuk koleksi root lama)
     match /{document=**} {
-      allow read, write: false;
+      allow read, write: if false;
     }
   }
 }

@@ -29,8 +29,7 @@ import {
   loginWithGoogle, 
   loginAsGuest, 
   sendResetPassword,
-  loginAsSuperAdmin,
-  DEFAULT_SUPERADMIN_PASSKEY
+  loginAsSuperAdmin
 } from "../lib/firebase";
 import { GuruUser } from "../types";
 
@@ -65,8 +64,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
 
-  // Form State Superadmin
-  const [superadminName, setSuperadminName] = useState("Ahmad Rifky Ridha");
+  // Form State Superadmin (wajib melalui Firebase Auth)
+  const [superadminEmail, setSuperadminEmail] = useState("");
   const [superadminKey, setSuperadminKey] = useState("");
   const [showSuperadminKey, setShowSuperadminKey] = useState(false);
 
@@ -236,29 +235,33 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }
   };
 
-  // 6. Handle Login Superadmin dengan Master Passkey
-  const handleSuperadminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!superadminKey.trim()) {
-      setErrorMsg("Mohon masukkan Master Passkey Superadmin.");
-      return;
-    }
+  // 6. Handle Login Superadmin: autentikasi Firebase + verifikasi otoritas
+  const runSuperadminLogin = async (method: "google" | "email") => {
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
 
     try {
-      const user = await loginAsSuperAdmin(superadminKey, superadminName);
+      const user = await loginAsSuperAdmin(method, superadminEmail, superadminKey);
       setSuccessMsg(`Otoritas Superadmin Diterima! Selamat datang, ${user.displayName}`);
       setTimeout(() => {
         onLoginSuccess(user);
       }, 500);
     } catch (err: any) {
       console.error("Superadmin login error:", err);
-      setErrorMsg(err?.message || "Passkey Superadmin tidak valid!");
+      setErrorMsg(err?.code ? parseAuthError(err) : (err?.message || "Login Superadmin gagal."));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSuperadminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!superadminEmail.trim() || !superadminKey) {
+      setErrorMsg("Mohon isi email dan password akun Superadmin.");
+      return;
+    }
+    await runSuperadminLogin("email");
   };
 
   return (
@@ -676,44 +679,51 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     </span>
                   </p>
                   <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300">
-                    Mode ini memberikan wewenang penuh untuk memantau data seluruh guru, menginspeksi workspace antar guru, dan mengatur master database.
+                    Mode ini memberikan wewenang penuh untuk memantau data seluruh guru, menginspeksi workspace antar guru, dan mengatur master database. Hanya akun terdaftar sebagai Superadmin yang dapat masuk.
                   </p>
                 </div>
               </div>
 
+              <button
+                type="button"
+                onClick={() => runSuperadminLogin("google")}
+                disabled={loading}
+                className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 border border-amber-500/40 text-xs font-semibold flex items-center justify-center space-x-2 transition-all cursor-pointer active:scale-98 disabled:opacity-60"
+              >
+                <Crown className="w-4 h-4 text-amber-500" />
+                <span>Masuk Superadmin dengan Google</span>
+              </button>
+
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-slate-400">
+                <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+                <span>atau email terverifikasi</span>
+                <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+              </div>
+
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  Nama Administrator Utama *
+                  Email Superadmin *
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
-                    <User className="w-4 h-4" />
+                    <Mail className="w-4 h-4" />
                   </div>
                   <input
-                    type="text"
+                    type="email"
                     required
-                    value={superadminName}
-                    onChange={(e) => setSuperadminName(e.target.value)}
-                    placeholder="Nama Lengkap Administrator"
+                    autoComplete="username"
+                    value={superadminEmail}
+                    onChange={(e) => setSuperadminEmail(e.target.value)}
+                    placeholder="email@domain.com"
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-950/70 border border-amber-500/30 dark:border-amber-500/40 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 text-xs font-semibold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                    Master Passkey Superadmin *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setSuperadminKey(DEFAULT_SUPERADMIN_PASSKEY)}
-                    className="text-[10.5px] text-amber-600 dark:text-amber-400 hover:underline font-mono font-bold cursor-pointer"
-                    title="Gunakan passkey master bawaan"
-                  >
-                    ⚡ Isi Cepat: {DEFAULT_SUPERADMIN_PASSKEY}
-                  </button>
-                </div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Password *
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
                     <ShieldAlert className="w-4 h-4" />
@@ -721,9 +731,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
                   <input
                     type={showSuperadminKey ? "text" : "password"}
                     required
+                    autoComplete="current-password"
                     value={superadminKey}
                     onChange={(e) => setSuperadminKey(e.target.value)}
-                    placeholder={`Masukkan Master Passkey (${DEFAULT_SUPERADMIN_PASSKEY})`}
+                    placeholder="Password akun Superadmin"
                     className="w-full pl-9 pr-10 py-2.5 bg-slate-50 dark:bg-slate-950/70 border border-amber-500/30 dark:border-amber-500/40 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 text-xs font-mono font-bold outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50"
                   />
                   <button

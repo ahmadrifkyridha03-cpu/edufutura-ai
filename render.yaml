@@ -13,6 +13,6 @@ services:
       - key: GEMINI_API_KEY
         sync: false # Masukkan API Key Gemini Anda di Dashboard Render
       - key: AUTH_USERNAME
-        value: "www.yefriharyanto.id"
+        sync: false # Username admin master (opsional, disetel via Dashboard)
       - key: AUTH_PASSWORD
-        value: "123456"
+        sync: false # Password admin master (wajib dirahasiakan, disetel via Dashboard)

@@ -34,6 +34,40 @@ export function createApiApp() {
     next();
   });
 
+  // In-memory Rate Limiting per pemanggil (IP / Authorization token) untuk endpoint /api/ai/*
+  const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+  const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 menit
+  const RATE_LIMIT_MAX_REQUESTS = Number(process.env.AI_RATE_LIMIT_MAX) || 30; // 30 req/menit
+
+  app.use(["/api/ai", "/ai"], (req, res, next) => {
+    // Lewati GET / OPTIONS jika ada
+    if (req.method === "GET" || req.method === "OPTIONS") return next();
+
+    const authHeader = req.headers["authorization"] || "";
+    const clientId = authHeader 
+      ? `auth_${authHeader.slice(-24)}` 
+      : `ip_${req.ip || req.socket.remoteAddress || "caller"}`;
+    const now = Date.now();
+    const clientData = rateLimitMap.get(clientId);
+
+    if (!clientData || now > clientData.resetAt) {
+      rateLimitMap.set(clientId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+      return next();
+    }
+
+    if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+      const waitSeconds = Math.ceil((clientData.resetAt - now) / 1000);
+      return res.status(429).json({
+        status: "error",
+        code: "RATE_LIMIT_EXCEEDED",
+        message: `Terlalu banyak permintaan generasi AI dalam waktu singkat. Mohon tunggu ${waitSeconds} detik sebelum mencoba kembali.`
+      });
+    }
+
+    clientData.count += 1;
+    next();
+  });
+
   // Initialize Gemini AI Client lazily or safely
   const getAiClient = () => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -52,7 +86,10 @@ export function createApiApp() {
 
   // Helper for resilient Gemini API calls with model fallback and exponential retry
   const generateContentWithRetry = async (ai: GoogleGenAI, contents: any) => {
-    const modelCandidates = [
+    const envModels = process.env.GEMINI_MODEL_CANDIDATES
+      ? process.env.GEMINI_MODEL_CANDIDATES.split(",").map((m) => m.trim()).filter(Boolean)
+      : [];
+    const modelCandidates = envModels.length > 0 ? envModels : [
       "gemini-3.8-flash",
       "gemini-3.5-flash-lite",
       "gemini-2.5-flash",
@@ -144,29 +181,14 @@ export function createApiApp() {
   app.post(["/api/auth/login", "/auth/login"], async (req, res) => {
     try {
       const { username, password } = req.body || {};
-      let validUsername = process.env.AUTH_USERNAME || "www.yefriharyanto.id";
-      let validPassword = process.env.AUTH_PASSWORD || "123456";
+      const validUsername = process.env.AUTH_USERNAME;
+      const validPassword = process.env.AUTH_PASSWORD;
 
-      // Query Firestore database directly for updated credentials saved in Pengaturan
-      try {
-        const projectId = process.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigData.projectId;
-        const dbId = process.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigData.firestoreDatabaseId || "(default)";
-        const apiKey = process.env.VITE_FIREBASE_API_KEY || firebaseConfigData.apiKey;
-        const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents/pengaturan/config?key=${apiKey}`;
-        
-        const dbResponse = await fetch(firestoreUrl, { signal: AbortSignal.timeout(2000) });
-        if (dbResponse.ok) {
-          const docData = await dbResponse.json();
-          const fields = docData.fields || {};
-          if (fields.username && fields.username.stringValue) {
-            validUsername = fields.username.stringValue;
-          }
-          if (fields.password && fields.password.stringValue) {
-            validPassword = fields.password.stringValue;
-          }
-        }
-      } catch (dbErr) {
-        console.warn("Notice: Using fallback credentials due to Firestore config fetch notice:", dbErr);
+      if (!validPassword || !validUsername) {
+        return res.status(503).json({
+          status: "error",
+          message: "Autentikasi REST API dinonaktifkan karena kredensial server belum dikonfigurasi. Silakan masuk menggunakan akun Google atau Email resmi via Firebase Auth."
+        });
       }
 
       if (!username || !password) {
@@ -178,7 +200,7 @@ export function createApiApp() {
 
       const inputUsername = String(username).trim().toUpperCase();
       const expectedUsername = String(validUsername).trim().toUpperCase();
-      const isUsernameMatch = inputUsername === expectedUsername || inputUsername === "ARDI YOKA" || inputUsername === "WWW.YEFRIHARYANTO.ID";
+      const isUsernameMatch = inputUsername === expectedUsername;
 
       if (isUsernameMatch && String(password).trim() === validPassword) {
         // Generate a server-signed session token
@@ -189,8 +211,8 @@ export function createApiApp() {
           status: "success",
           token,
           user: {
-            username: "www.yefriharyanto.id",
-            nama: "www.yefriharyanto.id",
+            username: validUsername,
+            nama: validUsername,
             role: "Administrator Guru"
           }
         });

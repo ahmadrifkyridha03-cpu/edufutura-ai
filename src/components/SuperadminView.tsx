@@ -21,7 +21,8 @@ import {
   UserCheck,
   UserX,
   ArrowRight,
-  Cpu
+  Cpu,
+  ShieldCheck
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { GuruUser, Siswa, Mapel } from "../types";
@@ -29,8 +30,6 @@ import {
   getAllRegisteredTeachers, 
   updateTeacherRole, 
   deleteTeacherProfile,
-  getSuperAdminPasskey,
-  setSuperAdminPasskey,
   setActiveUserId,
   getActiveUserId
 } from "../lib/firebase";
@@ -48,16 +47,11 @@ export const SuperadminView: React.FC<SuperadminViewProps> = ({
   activeInspectedTeacher,
   onNavigateTab
 }) => {
+  // State filters & search
   const [teachers, setTeachers] = useState<GuruUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [refreshing, setRefreshing] = useState<boolean>(false);
-
-  // State Ubah Passkey
-  const [currentPasskey, setCurrentPasskey] = useState<string>("");
-  const [newPasskey, setNewPasskey] = useState<string>("");
-  const [confirmPasskey, setConfirmPasskey] = useState<string>("");
-  const [passkeyMsg, setPasskeyMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   // Load registered teachers
   const loadTeachers = async () => {
@@ -80,7 +74,6 @@ export const SuperadminView: React.FC<SuperadminViewProps> = ({
 
   useEffect(() => {
     loadTeachers();
-    setCurrentPasskey(getSuperAdminPasskey());
   }, []);
 
   const handleRefresh = () => {
@@ -230,25 +223,6 @@ export const SuperadminView: React.FC<SuperadminViewProps> = ({
         });
       }
     }
-  };
-
-  // Handle Change Passkey
-  const handleChangePasskey = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPasskey.trim() || newPasskey.length < 6) {
-      setPasskeyMsg({ text: "Passkey baru minimal harus 6 karakter.", type: "error" });
-      return;
-    }
-    if (newPasskey !== confirmPasskey) {
-      setPasskeyMsg({ text: "Konfirmasi passkey baru tidak cocok.", type: "error" });
-      return;
-    }
-
-    setSuperAdminPasskey(newPasskey.trim());
-    setCurrentPasskey(newPasskey.trim());
-    setNewPasskey("");
-    setConfirmPasskey("");
-    setPasskeyMsg({ text: "Master Passkey Superadmin berhasil diperbarui!", type: "success" });
   };
 
   // Handle Export Backup
@@ -617,73 +591,44 @@ export const SuperadminView: React.FC<SuperadminViewProps> = ({
 
         {/* Right Column: Passkey Management & Diagnostic Tools */}
         <div className="space-y-4">
-          {/* Card 1: Ganti Master Passkey */}
+          {/* Card 1: Status Otoritas Superadmin & Keamanan Akun */}
           <div className="bg-white dark:bg-slate-900/90 rounded-3xl border border-slate-200 dark:border-white/10 p-5 sm:p-6 shadow-sm space-y-4">
             <div className="flex items-center space-x-2 pb-2 border-b border-slate-100 dark:border-white/10">
-              <KeyRound className="w-5 h-5 text-amber-500" />
+              <ShieldCheck className="w-5 h-5 text-emerald-500" />
               <h3 className="font-display font-extrabold text-sm sm:text-base text-slate-900 dark:text-white">
-                Pengaturan Master Passkey
+                Otoritas &amp; Keamanan Akun
               </h3>
             </div>
 
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Passkey ini digunakan untuk membuka otoritas Superadmin dari halaman login.
+              Otoritas Superadmin diverifikasi langsung oleh <b>Firebase Authentication</b> dan <b>Cloud Firestore Rules</b> (Role-Based Access Control).
             </p>
 
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex items-center justify-between text-xs">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Passkey Aktif:</span>
-              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
-                {currentPasskey || "superadmin2026"}
-              </span>
+            <div className="space-y-2 text-xs">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Akun Aktif:</span>
+                <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[180px]" title={currentUser.email || currentUser.displayName || ""}>
+                  {currentUser.email || currentUser.displayName || "Superadmin"}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Tingkat Hak Akses:</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-bold border border-amber-500/30 text-[10.5px]">
+                  ROOT SUPERADMIN
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Keamanan Rules:</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Isolasi Aktif
+                </span>
+              </div>
             </div>
 
-            {passkeyMsg && (
-              <div className={`p-3 rounded-xl text-xs flex items-center space-x-2 ${
-                passkeyMsg.type === "success" 
-                  ? "bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 text-emerald-800 dark:text-emerald-200" 
-                  : "bg-red-50 dark:bg-red-950/60 border border-red-300 text-red-800 dark:text-red-200"
-              }`}>
-                {passkeyMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-                <span>{passkeyMsg.text}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleChangePasskey} className="space-y-3 pt-1">
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Passkey Baru:
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={newPasskey}
-                  onChange={(e) => setNewPasskey(e.target.value)}
-                  placeholder="Min. 6 karakter"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  Ulangi Passkey Baru:
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPasskey}
-                  onChange={(e) => setConfirmPasskey(e.target.value)}
-                  placeholder="Ulangi passkey baru"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 rounded-xl text-xs font-mono outline-none focus:border-amber-500 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-98"
-              >
-                Simpan Passkey Baru
-              </button>
-            </form>
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
+              💡 <b>Tips Pengelolaan:</b> Anda dapat mengangkat guru menjadi Superadmin atau mengembalikannya ke Guru biasa melalui tombol di tabel di samping.
+            </div>
           </div>
 
           {/* Card 2: Sistem Diagnostik & Arsitektur */}
