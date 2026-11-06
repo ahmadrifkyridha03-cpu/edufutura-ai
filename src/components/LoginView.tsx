@@ -721,9 +721,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  Password *
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Password *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(superadminEmail);
+                      setIsForgotModalOpen(true);
+                    }}
+                    className="text-[10.5px] font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    Lupa Password?
+                  </button>
+                </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-amber-500">
                     <ShieldAlert className="w-4 h-4" />
