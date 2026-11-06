@@ -391,9 +391,45 @@ export function extractSyncDataFromPerangkat(
 
   let daftarBab: PerangkatBabItem[] = [];
 
-  // Strategi 1: Parse Elemen CP dari formData
+  // Strategi 0: Parse instruksi khusus / urutan materi jika guru menuliskan daftar Bab/Materi
+  const customInst = (formData?.customInstructions || formData?.instruksiKhusus || "").trim();
+  if (customInst) {
+    const babLines = customInst
+      .split("\n")
+      .map((l: string) => l.trim())
+      .filter((l: string) => /^(bab\s*\d+|materi\s*\d+|\d+[\.\)])/i.test(l));
+
+    if (babLines.length > 0) {
+      daftarBab = babLines.map((line: string, idx: number) => {
+        const babNomor = idx + 1;
+        let cleanJudul = line.replace(/^(bab\s*\d+[:\.\-]*|materi\s*\d+[:\.\-]*|\d+[\.\)])\s*/i, "").trim();
+        if (!cleanJudul) cleanJudul = `Materi Pokok ${babNomor}`;
+        const judulBabLengkap = `Bab ${babNomor}: ${cleanJudul}`;
+        const sem = babNomor <= Math.ceil(babLines.length / 2) ? "1" : "2";
+        const tpRumusan = `1. Peserta didik mampu memahami dan menguasai konsep esensial ${cleanJudul} secara mendalam dan berkesadaran (Mindful).\n2. Peserta didik mampu menerapkan prinsip ${cleanJudul} dalam pemecahan masalah kontekstual dan unjuk kerja Public Speaking secara kolaboratif (Meaningful & Joyful).`;
+
+        return {
+          id: `bab-${babNomor}`,
+          nomor: babNomor,
+          judulBab: judulBabLengkap,
+          elemenName: cleanJudul,
+          ringkasanMateri: `Materi pembelajaran ${cleanJudul} sesuai urutan silabus sekolah.`,
+          tujuanPembelajaran: tpRumusan,
+          alokasiWaktu: "4 x 45 JP",
+          jumlahPertemuan: "2",
+          semester: sem as "1" | "2",
+          fase,
+          kelas,
+          jenjang,
+          mapel: subject
+        };
+      });
+    }
+  }
+
+  // Strategi 1: Parse Elemen CP dari formData (jika belum ditentukan via instruksi khusus)
   const rawCpElemen = formData?.cpElemen || "";
-  if (rawCpElemen.trim()) {
+  if (daftarBab.length === 0 && rawCpElemen.trim()) {
     const blocks = rawCpElemen
       .split(/(?=Elemen\s+\d+|Elemen\s+[A-Za-z]+:)/i)
       .map((b: string) => b.trim())

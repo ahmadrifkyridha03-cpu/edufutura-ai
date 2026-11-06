@@ -210,17 +210,28 @@ export function buildKurikulumMerdekaDocument(
   const kop = renderKop(d);
   const ttd = renderSignatures(d);
 
-  // Parse Elemen lines if available
-  const elemenLines = (d.cpElemen || "")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  // Parse Elemen lines or Custom Instructions if available
+  const customInst = (d.customInstructions || d.instruksiKhusus || "").trim();
+  const customBabLines = customInst
+    ? customInst
+        .split("\n")
+        .map((l: string) => l.trim())
+        .filter((l: string) => /^(bab\s*\d+|materi\s*\d+|\d+[\.\)])/i.test(l))
+    : [];
+
+  const elemenLines = customBabLines.length > 0
+    ? customBabLines
+    : (d.cpElemen || "")
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
 
   const parsedElemenList = elemenLines.length > 0
     ? elemenLines.map((line, idx) => {
         const parts = line.split(":");
-        const name = parts[0]?.trim() || `Elemen ${idx + 1}`;
-        const desc = parts.slice(1).join(":")?.trim() || line;
+        let name = parts[0]?.trim() || `Elemen ${idx + 1}`;
+        name = name.replace(/^(bab\s*\d+[:\.\-]*|materi\s*\d+[:\.\-]*|\d+[\.\)])\s*/i, "").trim() || name;
+        const desc = parts.slice(1).join(":")?.trim() || `Kajian mendalam materi ${name} sesuai kurikulum satuan pendidikan.`;
         return { name, desc };
       })
     : [

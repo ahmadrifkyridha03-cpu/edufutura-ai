@@ -517,7 +517,7 @@ export function buildExactAthirahModulHtml(formData: AthirahModulInput): string 
             <div>Sekolah Islam Athirah</div>
           </div>
 
-          <table class="table-asesmen-017" style="width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #000000;">
+          <table class="table-asesmen-017" style="width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #000000; margin-bottom: 16px;">
             <colgroup>
               <col style="width: 14.28%;" />
               <col style="width: 14.28%;" />
@@ -542,6 +542,151 @@ export function buildExactAthirahModulHtml(formData: AthirahModulInput): string 
               ${lampiran017Rows}
             </tbody>
           </table>
+
+          <!-- 1. Rubrik Penilaian Unjuk Kerja Non-Tertulis (Program Khas: Public Speaking) -->
+          <div style="font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; font-weight: bold; margin: 18px 0 6px 0; color: #000000;">
+            A. Rubrik Penilaian Unjuk Kerja — Program Khas (${programKhas})
+          </div>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; color: #000000; margin-bottom: 12px;">
+            <thead>
+              <tr>
+                <th style="${thBlue} width: 5%;">No</th>
+                <th style="${thBlue} width: 22%;">Aspek Penilaian</th>
+                <th style="${thBlue} width: 18.25%;">Sangat Baik (Skor 4)</th>
+                <th style="${thBlue} width: 18.25%;">Baik (Skor 3)</th>
+                <th style="${thBlue} width: 18.25%;">Cukup (Skor 2)</th>
+                <th style="${thBlue} width: 18.25%;">Perlu Bimbingan (Skor 1)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">1</td>
+                <td style="${tdBase}"><strong>Artikulasi &amp; Volume Suara (Vokal)</strong></td>
+                <td style="${tdBase}">Suara lantang, pelafalan sangat jelas, intonasi dinamis dan menghidupkan suasana kelas.</td>
+                <td style="${tdBase}">Suara jelas terdengar hingga belakang, pelafalan tepat dengan intonasi wajar.</td>
+                <td style="${tdBase}">Suara kurang terdengar jelas di baris belakang, pelafalan agak terburu-buru atau datar.</td>
+                <td style="${tdBase}">Suara sangat pelan/bergumam, artikulasi tidak jelas, intonasi monoton.</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">2</td>
+                <td style="${tdBase}"><strong>Penguasaan Materi &amp; Alur Konsep</strong></td>
+                <td style="${tdBase}">Menguasai konsep materi <em>${topik}</em> secara mendalam, penjelasan runtut, logis, dan analitis.</td>
+                <td style="${tdBase}">Memahami konsep materi dengan baik, penyampaian runtut dan relevan dengan topik.</td>
+                <td style="${tdBase}">Cukup memahami materi namun sesekali terhenti atau membaca catatan secara penuh.</td>
+                <td style="${tdBase}">Belum menguasai materi, konsep yang disampaikan keliru atau terputus-putus.</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">3</td>
+                <td style="${tdBase}"><strong>Kepercayaan Diri &amp; Kontak Mata</strong></td>
+                <td style="${tdBase}">Kontak mata merata ke seluruh audiens, gestur tubuh wajar, santun, dan sangat percaya diri.</td>
+                <td style="${tdBase}">Kontak mata baik ke audiens, postur berdiri tegak, tenang dan percaya diri.</td>
+                <td style="${tdBase}">Kontak mata hanya tertuju ke guru atau catatan, sesekali tampak gugup/kaku.</td>
+                <td style="${tdBase}">Menghindari kontak mata, membungkuk atau menunjukkan rasa cemas berlebih.</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">4</td>
+                <td style="${tdBase}"><strong>Responsivitas &amp; Adab Komunikasi</strong></td>
+                <td style="${tdBase}">Menjawab pertanyaan/tanggapan dengan tangkas, logis, santun (<em>qaulan sadida</em>), dan solutif.</td>
+                <td style="${tdBase}">Mampu menjawab pertanyaan dengan benar dan argumentasi yang memadai.</td>
+                <td style="${tdBase}">Menjawab pertanyaan namun membutuhkan bantuan arahan teman kelompok/guru.</td>
+                <td style="${tdBase}">Tidak mampu menjawab pertanyaan atau pasif saat sesi tanya jawab.</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="font-size: 10pt; margin-bottom: 16px; font-style: italic;">
+            * <strong>Pedoman Skor Public Speaking:</strong> Nilai = (Total Skor Perolehan / 16) &times; 100. Kategori: 88–100 (Sangat Baik / Mahir), 78–87 (Baik / Cakap), 70–77 (Cukup / Layak), &lt;70 (Perlu Bimbingan).
+          </div>
+
+          <!-- 2. Rubrik Asesmen Sikap & Kalla Core Values (Spiritualisasi) -->
+          <div style="font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; font-weight: bold; margin: 16px 0 6px 0; color: #000000;">
+            B. Rubrik Observasi Sikap &amp; Karakter (Kalla Core Values &amp; Profil Athirah)
+          </div>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; color: #000000; margin-bottom: 12px;">
+            <thead>
+              <tr>
+                <th style="${thBlue} width: 5%;">No</th>
+                <th style="${thBlue} width: 25%;">Dimensi Sikap / Nilai</th>
+                <th style="${thBlue} width: 45%;">Indikator Perilaku yang Diamati</th>
+                <th style="${thBlue} width: 25%;">Keterlaksanaan (SB / B / C / K)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">1</td>
+                <td style="${tdBase}"><strong>Ikhlas &amp; Berkesadaran (Mindful)</strong></td>
+                <td style="${tdBase}">Mengawali pembelajaran dengan doa khusyuk, berniat menuntut ilmu lillahi ta'ala, beradab santun terhadap guru dan teman sebaya.</td>
+                <td style="${tdBase} text-align: center; vertical-align: middle;">Teramati Mandiri</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">2</td>
+                <td style="${tdBase}"><strong>Cerdas &amp; Kritis (Meaningful)</strong></td>
+                <td style="${tdBase}">Menganalisis masalah konteksual pada LKPD secara teliti, berani bertanya esensial, dan menghubungkan materi dengan kebesaran Allah SWT.</td>
+                <td style="${tdBase} text-align: center; vertical-align: middle;">Teramati Mandiri</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">3</td>
+                <td style="${tdBase}"><strong>Cepat &amp; Kolaboratif (Joyful)</strong></td>
+                <td style="${tdBase}">Cekatan dalam berdiskusi kelompok, menghargai perbedaan gagasan, aktif berkontribusi menyelesaikan tugas tepat waktu.</td>
+                <td style="${tdBase} text-align: center; vertical-align: middle;">Teramati Mandiri</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center; font-weight: bold;">4</td>
+                <td style="${tdBase}"><strong>Keras &amp; Pantang Menyerah</strong></td>
+                <td style="${tdBase}">Gigih memecahkan tantangan materi yang rumit, tidak mudah putus asa saat menghadapi kendala, dan berdedikasi tinggi hingga tuntas.</td>
+                <td style="${tdBase} text-align: center; vertical-align: middle;">Teramati Mandiri</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- 3. Format Rekap Nilai Formatif Pertemuan -->
+          <div style="font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; font-weight: bold; margin: 16px 0 6px 0; color: #000000;">
+            C. Format Lembar Penilaian &amp; Rekap Asesmen Formatif Siswa
+          </div>
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000; font-family: 'Times New Roman', Times, serif; font-size: 10pt; color: #000000; margin-bottom: 14px;">
+            <thead>
+              <tr>
+                <th style="${thBlue} width: 6%;">No</th>
+                <th style="${thBlue} width: 24%;">Nama Peserta Didik</th>
+                <th style="${thBlue} width: 15%;">Tes Tertulis (LKPD)</th>
+                <th style="${thBlue} width: 17%;">Unjuk Kerja (${programKhas})</th>
+                <th style="${thBlue} width: 14%;">Observasi Sikap</th>
+                <th style="${thBlue} width: 12%;">Nilai Akhir Formatif</th>
+                <th style="${thBlue} width: 12%;">Tindak Lanjut (T/R)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="${tdBase} text-align: center;">1</td>
+                <td style="${tdBase}">..................................................</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">Tuntas / Rem</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center;">2</td>
+                <td style="${tdBase}">..................................................</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">Tuntas / Rem</td>
+              </tr>
+              <tr>
+                <td style="${tdBase} text-align: center;">3</td>
+                <td style="${tdBase}">..................................................</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">......</td>
+                <td style="${tdBase} text-align: center;">Tuntas / Rem</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="font-size: 9.5pt; color: #333333; margin-bottom: 10px;">
+            <em>Keterangan: T = Tuntas (mencapai KKTP), R = Remedial (memerlukan bimbingan tutor sebaya atau penugasan ulang).</em>
+          </div>
         </div>
       `
       : "";

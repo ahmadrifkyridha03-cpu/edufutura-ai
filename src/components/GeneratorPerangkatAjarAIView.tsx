@@ -118,7 +118,8 @@ Elemen 3 — Pengukuran & Geometri:
 Peserta didik mampu menghitung luas lingkaran, volume bangun ruang sisi datar, menggunakan teorema Pythagoras, dan transformasi geometri.
 
 Elemen 4 — Analisis Data dan Peluang:
-Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`
+Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`,
+    customInstructions: ""
   });
 
   useEffect(() => {
@@ -272,7 +273,17 @@ Elemen 3 — Pengukuran & Geometri:
 Peserta didik mampu menghitung luas lingkaran, volume bangun ruang sisi datar, menggunakan teorema Pythagoras, dan transformasi geometri.
 
 Elemen 4 — Analisis Data dan Peluang:
-Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`
+Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan menganalisis data untuk menjawab pertanyaan serta menentukan peluang empiris dan teoretis.`,
+      customInstructions: `Urutan Materi Semester 1:
+Bab 1: Bilangan Berpangkat dan Bentuk Akar
+Bab 2: Teorema Pythagoras
+Bab 3: Sistem Persamaan Linear Dua Variabel (SPLDV)
+
+Urutan Materi Semester 2:
+Bab 4: Relasi dan Fungsi
+Bab 5: Persamaan Garis Lurus
+Bab 6: Statistika dan Analisis Peluang
+Fokuskan seluruh TP dan ATP pada pemecahan masalah kontekstual dan integrasi unjuk kerja Public Speaking.`
     };
     setFormData(newSampleData);
     setRmeGanjil(DEFAULT_RME_GANJIL);
@@ -1170,6 +1181,29 @@ Peserta didik mampu merumuskan pertanyaan, mengumpulkan, menyajikan, dan mengana
               className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-medium leading-relaxed outline-none focus:border-cyan-500"
             />
           </div>
+        </div>
+
+        {/* Instruksi Khusus & Urutan Materi Sekolah */}
+        <div className="pt-3 border-t border-slate-200 dark:border-white/10 mt-3">
+          <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+            <label className="font-bold text-slate-900 dark:text-white text-xs flex items-center space-x-2">
+              <Sparkles className="w-4 h-4 text-cyan-500" />
+              <span>Instruksi Khusus &amp; Urutan Materi Sekolah (Opsional — Sangat Dianjurkan)</span>
+            </label>
+            <span className="text-[10px] text-cyan-700 dark:text-cyan-300 font-bold bg-cyan-500/10 px-2.5 py-0.5 rounded-full border border-cyan-500/30">
+              ⚡ Prioritas Utama AI &amp; Sinkronisasi Bab Otomatis
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
+            Jika sekolah Anda sudah memiliki silabus atau daftar urutan bab tersendiri (misal: <em>Bab 1: Eksponen, Bab 2: Barisan &amp; Deret...</em>), tuliskan di sini. AI akan menyusun TP, ATP, Prota, Prosem, dan KKTP <strong>secara ketat mengikuti urutan Anda</strong>, dan daftar urutan bab ini otomatis tersambung ke Modul Ajar dan LKPD.
+          </p>
+          <textarea
+            rows={4}
+            value={formData.customInstructions}
+            onChange={(e) => setFormData({ ...formData, customInstructions: e.target.value })}
+            placeholder="Contoh instruksi urutan materi:&#10;Urutan Materi Semester 1:&#10;Bab 1: Bilangan Berpangkat dan Bentuk Akar&#10;Bab 2: Persamaan dan Fungsi Kuadrat&#10;&#10;Urutan Materi Semester 2:&#10;Bab 3: Transformasi Geometri&#10;Bab 4: Kekongruenan dan Kesebangunan&#10;Catatan: Fokuskan indikator asesmen pada pemecahan masalah kontekstual dan unjuk kerja Public Speaking."
+            className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-white/10 font-mono text-xs leading-relaxed outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+          />
         </div>
       </div>
 

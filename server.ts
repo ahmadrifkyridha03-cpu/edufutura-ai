@@ -1096,6 +1096,21 @@ Format Objek JSON Per Slide:
       const cpRasional = formData?.cpRasional || "Pada akhir Fase E, peserta didik memiliki kemampuan berbahasa untuk berkomunikasi dan bernalar sesuai dengan tujuan, konteks sosial, akademis, dan dunia kerja.";
       const cpElemen = formData?.cpElemen || `Elemen 1 — Menyimak: Peserta didik mampu mengevaluasi dan mengkreasi informasi berupa gagasan dari berbagai tipe teks lisan.\nElemen 2 — Membaca dan Memirsa: Peserta didik mampu mengevaluasi informasi berupa gagasan dari teks deskripsi, laporan, narasi, eksplanasi, eksposisi.\nElemen 3 — Berbicara dan Mempresentasikan: Peserta didik mampu mengolah dan menyajikan gagasan untuk tujuan pengajuan usul dan solusi.\nElemen 4 — Menulis: Peserta didik mampu menulis gagasan tertulis secara logis, kritis, dan kreatif.`;
 
+      // Ekstraksi Instruksi Khusus / Urutan Materi dari Guru / Sekolah
+      const customInstructions = (formData?.customInstructions || formData?.instruksiKhusus || "").trim();
+      const customInstructionBlock = customInstructions
+        ? `
+[INSTRUKSI KHUSUS & URUTAN MATERI DARI GURU / SEKOLAH — WAJIB DIIKUTI SECARA KETAT]:
+Guru / Satuan Pendidikan menetapkan daftar urutan materi, bab, alur semester, atau instruksi khusus sebagai berikut:
+"""
+${customInstructions}
+"""
+PERINGATAN SANGAT PENTING:
+1. Seluruh Tujuan Pembelajaran (TP), Alur Tujuan Pembelajaran (ATP), Pemetaan Bab, Program Tahunan (PROTA), Program Semester (PROSEM), dan Kriteria Ketercapaian (KKTP) WAJIB disusun dengan PRIORITAS TERTINGGI mengikuti daftar urutan materi dan instruksi khusus di atas!
+2. Jangan mengganti, mengacak, atau membuang materi yang secara eksplisit telah dicantumkan oleh guru di atas!
+`
+        : "";
+
       // Ekstraksi data RME & Kalender Pendidikan
       const rmeData = formData?.rme;
       let rmeContext = "";
@@ -1150,6 +1165,7 @@ ${generalRules}
 - Kota / Tanggal TTD: ${cityDate}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
+${customInstructionBlock}
 ${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB:
@@ -1182,6 +1198,7 @@ ${generalRules}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - Rasional CP Umum: ${cpRasional}
 - CP Per Elemen: ${cpElemen}
+${customInstructionBlock}
 ${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB (7 Bagian Wajib):
@@ -1216,6 +1233,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${customInstructionBlock}
 ${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB (4 Bagian Wajib):
@@ -1247,6 +1265,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${customInstructionBlock}
 ${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB (4 Bagian Wajib):
@@ -1278,6 +1297,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${customInstructionBlock}
 ${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB:
@@ -1312,6 +1332,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${customInstructionBlock}
 ${rmeContext}
 
 STRUKTUR DOKUMEN HTML WAJIB:
@@ -1342,6 +1363,7 @@ ${generalRules}
 - Nama Kepala Sekolah: ${principal}
 - NIP Kepala Sekolah: ${nipPrincipal}
 - CP Per Elemen: ${cpElemen}
+${customInstructionBlock}
 
 STRUKTUR DOKUMEN HTML WAJIB:
 1. Kop Sekolah (TANPA LOGO) & Nomor Dokumen: No. Dok: ADM-KKTP-${singkatanMapel}-${level.replace(/\s+/g, '')} / Rev: 00 / Tgl: ${year.slice(0, 4)}
@@ -1357,7 +1379,7 @@ KETENTUAN LAYOUT HTML:
 - Gunakan LANDSCAPE A4 di @media print { @page { size: A4 landscape; margin: 1.2cm; } }. Warna header #1a3a5c.`;
       } else {
         // Default prompt for generate overview / all
-        docPrompt = `Buatkan Dokumen Analisis Capaian Pembelajaran (CP) dan Administrasi Perangkat Ajar Kurikulum Merdeka untuk sekolah ${schoolName}, mapel ${subject}, ${level}, tahun ${year}, guru ${teacher}. Hasilkan MURNI HTML lengkap dengan Kop Sekolah, Tabel Rapi, dan Tanda Tangan Penutup.`;
+        docPrompt = `Buatkan Dokumen Analisis Capaian Pembelajaran (CP) dan Administrasi Perangkat Ajar Kurikulum Merdeka untuk sekolah ${schoolName}, mapel ${subject}, ${level}, tahun ${year}, guru ${teacher}. ${customInstructionBlock} Hasilkan MURNI HTML lengkap dengan Kop Sekolah, Tabel Rapi, dan Tanda Tangan Penutup.`;
       }
 
       let htmlOutput = "";
@@ -1441,6 +1463,17 @@ KETENTUAN LAYOUT HTML:
 
       let docPrompt = "";
 
+      const customInstructions = (formData?.customInstructions || formData?.instruksiKhusus || "").trim();
+      const customInstructionBlock = customInstructions
+        ? `
+[INSTRUKSI KHUSUS & URUTAN MATERI KBC DARI GURU / MADRASAH]:
+"""
+${customInstructions}
+"""
+PERINGATAN: Susun seluruh Analisis CP, TP, ATP, Prota, Prosem, dan Modul KBC dengan PRIORITAS TERTINGGI mengikuti urutan materi di atas!
+`
+        : "";
+
       const generalKbcRules = `
 [ATURAN PENTING KBC & KEMENAG]:
 - Kamu adalah Ahli Kurikulum & Pengembang Perangkat Ajar Kemenag RI, menguasai "Kurikulum Berbasis Cinta (KBC)" (turunan Kurikulum Merdeka yang mengintegrasikan Panca Cinta Kemenag & 10 Nilai PPRA: Ta'addub, Qudwah, Muwaṭanah, Tawassuṭ, Tawāzun, I'tidāl, Musāwah, Syūrā, Tasāmuh, Tathawwur wa Ibtikār).
@@ -1448,6 +1481,7 @@ KETENTUAN LAYOUT HTML:
 - Gunakan CSS internal rapi dengan font sans-serif (Arial/Calibri), header tabel warna biru tua (#1a3a5c) teks putih bold.
 - Tanda tangan penutup 2 kolom sejajar border 0 (Kepala Sekolah & Guru Mata Pelajaran).
 - Tanggal & Kota TTD: ${cityDate}.
+${customInstructionBlock}
       `;
 
       if (docType === "analisis_cp") {

@@ -73,7 +73,8 @@ Elemen 2 — Akhlak:
 Peserta didik mampu menganalisis dan membiasakan akhlak terpuji (mahmudah) seperti ta'addub, tasamuh, dan qudwah, serta menghindari akhlak tercela (mazmumah) dalam interaksi sosial dan digital.
 
 Elemen 3 — Adab:
-Peserta didik mampu menerapkan adab islami terhadap orang tua, guru, sesama manusia, serta lingkungan hidup berbasis kepedulian dan cinta kasih sesama.`
+Peserta didik mampu menerapkan adab islami terhadap orang tua, guru, sesama manusia, serta lingkungan hidup berbasis kepedulian dan cinta kasih sesama.`,
+    customInstructions: ""
   });
 
   // Data Form KHUSUS Modul Ajar, LKPD, & Rubrik (Dokumen 7-9)
@@ -771,6 +772,29 @@ Peserta didik mampu menerapkan adab islami terhadap orang tua, guru, sesama manu
                 className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium leading-relaxed"
               />
             </div>
+          </div>
+
+          {/* Instruksi Khusus & Urutan Materi KBC */}
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+              <label className="font-bold text-slate-800 dark:text-slate-200 text-xs flex items-center space-x-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Instruksi Khusus &amp; Urutan Materi Madrasah (Opsional)</span>
+              </label>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                Prioritas Utama KBC
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">
+              Jika madrasah Anda sudah memiliki urutan bab atau ketentuan materi tersendiri, tuliskan di sini (contoh: <em>Bab 1: ..., Bab 2: ...</em>). AI akan menyusun seluruh dokumen KBC mengikuti urutan Anda.
+            </p>
+            <textarea
+              rows={3}
+              value={formData.customInstructions || ""}
+              onChange={(e) => setFormData({ ...formData, customInstructions: e.target.value })}
+              placeholder="Contoh:&#10;Urutan Bab Semester 1:&#10;Bab 1: Asmaul Husna dan Nilai Kasih Sayang&#10;Bab 2: Membiasakan Akhlak Terpuji Ta'addub dan Qudwah"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-mono text-xs leading-relaxed outline-none focus:border-emerald-500"
+            />
           </div>
         </div>
       )}
