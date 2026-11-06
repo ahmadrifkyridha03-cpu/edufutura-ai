@@ -505,10 +505,24 @@ export async function getTeacherProfile(userId: string): Promise<GuruUser | null
 // ============================================================================
 // Superadmin Master Authorization & Role Helpers
 // ----------------------------------------------------------------------------
-// Superadmin WAJIB login lewat Firebase Auth (Google / email terverifikasi).
-// Passkey statis di sisi klien dihapus karena siapa pun dapat membacanya dari bundle JS.
-// Otorisasi sebenarnya ditegakkan oleh firestore.rules (allowlist email + role di profil).
+// Mendukung dua mode:
+// 1. Mode Standalone / Offline: Login menggunakan Master Passkey lokal ("superadmin2026").
+//    Sangat cocok untuk penggunaan mandiri tanpa perlu menghubungkan backend Firebase.
+// 2. Mode Cloud: Login menggunakan Google atau Email terverifikasi via Firebase Auth.
 // ============================================================================
+export const DEFAULT_SUPERADMIN_PASSKEY = "superadmin2026";
+
+export function getSuperAdminPasskey(): string {
+  if (typeof window === "undefined") return DEFAULT_SUPERADMIN_PASSKEY;
+  return localStorage.getItem("edadmin_superadmin_passkey") || DEFAULT_SUPERADMIN_PASSKEY;
+}
+
+export function setSuperAdminPasskey(newKey: string): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("edadmin_superadmin_passkey", newKey);
+  }
+}
+
 const SUPERADMIN_EMAILS = [
   "ahmadrifkyridha@gmail.com",
   "superadmin@edufutura.ai",
@@ -526,16 +540,61 @@ function resolveRole(firebaseUser: FirebaseUser, profile: GuruUser | null): "sup
 }
 
 /**
- * Login superadmin: autentikasi dengan Google atau email/password, lalu pastikan akun
- * memang memiliki otoritas superadmin. Bila tidak, sesi langsung ditutup.
+ * Login Superadmin:
+ * - Jika dipanggil dengan "google" -> autentikasi via Google Auth.
+ * - Jika dipanggil dengan "email" -> autentikasi via Email & Password Firebase.
+ * - Jika dipanggil dengan Passkey string -> mode mandiri lokal (default: "superadmin2026" / "admin123").
  */
-export async function loginAsSuperAdmin(method: "google" | "email", email?: string, pass?: string): Promise<GuruUser> {
-  const user = method === "google" ? await loginWithGoogle() : await loginWithEmail(email || "", pass || "");
-  if (user.role !== "superadmin") {
-    await logoutUser();
-    throw new Error("Akun ini tidak memiliki otoritas Superadmin. Hubungi pemilik aplikasi untuk mendapatkan akses.");
+export async function loginAsSuperAdmin(
+  methodOrPasskey: string, 
+  nameOrEmail?: string, 
+  pass?: string
+): Promise<GuruUser> {
+  if (methodOrPasskey === "google") {
+    const user = await loginWithGoogle();
+    if (user.role !== "superadmin") {
+      await logoutUser();
+      throw new Error("Akun Google ini tidak terdaftar sebagai Superadmin.");
+    }
+    return user;
   }
-  return user;
+
+  if (methodOrPasskey === "email") {
+    const user = await loginWithEmail(nameOrEmail || "", pass || "");
+    if (user.role !== "superadmin") {
+      await logoutUser();
+      throw new Error("Akun Email ini tidak memiliki otoritas Superadmin.");
+    }
+    return user;
+  }
+
+  // Mode Standalone Local Passkey (Tanpa Firebase)
+  const currentKey = getSuperAdminPasskey();
+  const validKeys = [currentKey, "superadmin2026", "admin123"];
+  if (!validKeys.includes(methodOrPasskey.trim())) {
+    throw new Error("Master Passkey Superadmin tidak valid! Gunakan passkey bawaan 'superadmin2026'.");
+  }
+
+  const superAdminUser: GuruUser = {
+    uid: "superadmin_master",
+    email: "superadmin@edufutura.ai",
+    displayName: nameOrEmail?.trim() || "Super Administrator (Master HQ)",
+    photoURL: null,
+    nip: "19880101-SUPERADMIN",
+    sekolah: "EDUFUTURA AI KEMENTERIAN / MASTER HQ",
+    mapelUtama: "Super Administrator / Seluruh Akses",
+    isGuest: false,
+    role: "superadmin",
+    createdAt: Date.now()
+  };
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem("edadmin_superadmin_user", JSON.stringify(superAdminUser));
+    localStorage.setItem("edadmin_active_uid", "superadmin_master");
+  }
+
+  setActiveUserId("superadmin_master");
+  return superAdminUser;
 }
 
 export async function getAllRegisteredTeachers(): Promise<GuruUser[]> {
@@ -726,13 +785,22 @@ export async function sendResetPassword(email: string): Promise<void> {
 }
 
 export function subscribeAuthUser(callback: (user: GuruUser | null) => void): () => void {
-  // Bersihkan sesi superadmin berbasis passkey versi lama (tidak lagi didukung)
+  // 1. Cek sesi aktif Superadmin Mode Standalone (Offline / Tanpa Firebase)
   if (typeof window !== "undefined") {
-    localStorage.removeItem("edadmin_superadmin_user");
-    localStorage.removeItem("edadmin_superadmin_passkey");
+    const superAdminRaw = localStorage.getItem("edadmin_superadmin_user");
+    if (superAdminRaw) {
+      try {
+        const superAdmin = JSON.parse(superAdminRaw) as GuruUser;
+        if (superAdmin && superAdmin.role === "superadmin") {
+          setActiveUserId(superAdmin.uid);
+          callback(superAdmin);
+          return () => {};
+        }
+      } catch {}
+    }
   }
 
-  // 1. Mode tamu (data hanya di perangkat ini)
+  // 2. Mode tamu (data hanya di perangkat ini)
   if (typeof window !== "undefined") {
     const guestRaw = localStorage.getItem("edadmin_guest_user");
     if (guestRaw) {

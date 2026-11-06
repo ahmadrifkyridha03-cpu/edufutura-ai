@@ -31,7 +31,8 @@ import {
   updateTeacherRole, 
   deleteTeacherProfile,
   setActiveUserId,
-  getActiveUserId
+  getActiveUserId,
+  getSuperAdminPasskey
 } from "../lib/firebase";
 
 interface SuperadminViewProps {
@@ -615,6 +616,12 @@ export const SuperadminView: React.FC<SuperadminViewProps> = ({
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Tingkat Hak Akses:</span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-bold border border-amber-500/30 text-[10.5px]">
                   ROOT SUPERADMIN
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">Master Passkey Lokal:</span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                  {getSuperAdminPasskey()}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/10 flex items-center justify-between">
